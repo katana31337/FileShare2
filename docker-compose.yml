@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: fileshare-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-fileshare}
+      POSTGRES_USER: ${DB_USER:-fileshare}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-fileshare_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - fileshare-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-fileshare}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fileshare-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-fileshare}
+      DB_USER: ${DB_USER:-fileshare}
+      DB_PASSWORD: ${DB_PASSWORD:-fileshare_secret}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+      MAX_FILE_SIZE: ${MAX_FILE_SIZE:-104857600}
+      UPLOAD_PATH: /app/uploads
+      SESSION_EXPIRY_DAYS: ${SESSION_EXPIRY_DAYS:-7}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-fs_sid}
+      COOKIE_SECRET: ${COOKIE_SECRET:-cookie-secret-change-me}
+      ADMIN_SECRET_PATH: ${ADMIN_SECRET_PATH:-/admin-secret-panel}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://localhost}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - fileshare-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: fileshare-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - fileshare-network
+
+  # Nginx (reverse proxy + SSL)
+  nginx:
+    image: nginx:alpine
+    container_name: fileshare-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certs:/etc/nginx/ssl:ro
+      - ./docker/nginx/certbot:/var/www/certbot:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - fileshare-network
+
+  # Certbot (for Let's Encrypt)
+  certbot:
+    image: certbot/certbot
+    container_name: fileshare-certbot
+    volumes:
+      - ./certs:/etc/letsencrypt
+      - ./docker/nginx/certbot:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - fileshare-network
+    profiles:
+      - letsencrypt
+
+volumes:
+  postgres_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+networks:
+  fileshare-network:
+    driver: bridge
