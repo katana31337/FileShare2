@@ -328,7 +328,7 @@ services:
       POSTGRES_USER: \${DB_USER:-fileshare}
       POSTGRES_PASSWORD: \${DB_PASSWORD}
     volumes:
-      - postgres_/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - fileshare-network
     healthcheck:
@@ -360,7 +360,7 @@ services:
       ADMIN_SECRET_PATH: \${ADMIN_SECRET_PATH}
       CORS_ORIGIN: \${CORS_ORIGIN}
     volumes:
-      - uploads_/app/uploads
+      - uploads_data:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -400,9 +400,9 @@ services:
       - fileshare-network
 
 volumes:
-  postgres_
+  postgres_data:
     driver: local
-  uploads_
+  uploads_data:
     driver: local
 
 networks:
