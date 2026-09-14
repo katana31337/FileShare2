@@ -80,7 +80,7 @@ export class AdminService {
     const token = jwt.sign(
       { id: admin.id, username: admin.username, role: 'admin' },
       config.jwt.secret,
-      { expiresIn: config.jwt.expiresIn }
+      { expiresIn: config.jwt.expiresIn as string | number }
     );
 
     logger.info(`Admin logged in: ${username}`);
