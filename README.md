@@ -29,7 +29,22 @@
 
 ## 🚀 Быстрый старт
 
-### Установка через скрипт
+### Вариант 1: Установка из Docker Hub (рекомендуется)
+
+```bash
+# 1. Создайте .env файл
+cp .env.example .env
+# Отредактируйте .env (пароли, секреты, домен)
+
+# 2. Используйте docker-compose.production.yml
+# (создаётся скриптом publish.sh или вручную)
+docker compose -f docker-compose.production.yml up -d
+
+# 3. Настройте SSL (самоподписанный или Let's Encrypt)
+# См. секцию SSL ниже
+```
+
+### Вариант 2: Локальная установка через скрипт
 
 ```bash
 chmod +x install.sh
@@ -42,7 +57,7 @@ chmod +x install.sh
 3. Секретный URL для админки
 4. Пароль для базы данных
 
-### Ручная установка (для разработки)
+### Вариант 3: Ручная сборка (для разработки)
 
 ```bash
 # 1. Клонировать и перейти в директорию
@@ -58,6 +73,17 @@ docker compose up -d
 # 4. Открыть в браузере
 # https://localhost
 ```
+
+### 📦 Публикация на Docker Hub
+
+Для публикации образов на Docker Hub используйте скрипт `publish.sh`:
+
+```bash
+chmod +x publish.sh
+./publish.sh -u your_dockerhub_username -v 1.0.0
+```
+
+Подробнее см. [PUBLISH.md](PUBLISH.md)
 
 ## 🔐 Админ-панель
 
