@@ -1,9 +1,10 @@
-#!/bin/bash
+#!/bin/sh
 
 # =============================================================================
 # FileShare — Installation Script
 # =============================================================================
 # Устанавливает FileShare из Docker Hub (katana31337)
+# POSIX-совместимый (работает с sh, bash, dash)
 # =============================================================================
 
 set -e
@@ -13,39 +14,48 @@ DOCKER_USER="katana31337"
 FRONTEND_IMAGE="$DOCKER_USER/fileshare-frontend"
 BACKEND_IMAGE="$DOCKER_USER/fileshare-backend"
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# Colors (через printf для совместимости)
+RED=''
+GREEN=''
+YELLOW=''
+BLUE=''
+NC=''
+
+# Включаем цвета только если терминал поддерживает
+if [ -t 1 ]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    NC='\033[0m'
+fi
 
 # Helper functions
 print_header() {
     echo ""
-    echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
-    echo -e "${BLUE}  $1${NC}"
-    echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+    printf "${BLUE}═══════════════════════════════════════════════════════════════${NC}\n"
+    printf "${BLUE}  %s${NC}\n" "$1"
+    printf "${BLUE}═══════════════════════════════════════════════════════════════${NC}\n"
     echo ""
 }
 
-print_success() { echo -e "${GREEN}✓ $1${NC}"; }
-print_warning() { echo -e "${YELLOW}⚠ $1${NC}"; }
-print_error()   { echo -e "${RED}✗ $1${NC}"; }
-print_info()    { echo -e "${BLUE}ℹ $1${NC}"; }
+print_success() { printf "${GREEN}✓ %s${NC}\n" "$1"; }
+print_warning() { printf "${YELLOW}⚠ %s${NC}\n" "$1"; }
+print_error()   { printf "${RED}✗ %s${NC}\n" "$1"; }
+print_info()    { printf "${BLUE}ℹ %s${NC}\n" "$1"; }
 
 # Check prerequisites
 check_requirements() {
     print_header "Проверка требований"
 
-    if ! command -v docker &> /dev/null; then
+    if ! command -v docker >/dev/null 2>&1; then
         print_error "Docker не установлен!"
         echo "Установите Docker: https://docs.docker.com/get-docker/"
         exit 1
     fi
     print_success "Docker установлен: $(docker --version)"
 
-    if ! docker info &> /dev/null; then
+    if ! docker info >/dev/null 2>&1; then
         print_error "Docker daemon не запущен!"
         exit 1
     fi
@@ -56,13 +66,13 @@ check_requirements() {
 
 # Generate random password
 generate_password() {
-    local length=${1:-32}
+    length=${1:-32}
     openssl rand -base64 48 | tr -dc 'a-zA-Z0-9!@#$%^&*' | head -c "$length"
 }
 
 # Generate random string
 generate_random_string() {
-    local length=${1:-32}
+    length=${1:-32}
     openssl rand -hex "$length"
 }
 
@@ -71,26 +81,29 @@ collect_config() {
     print_header "Конфигурация проекта"
 
     # Version
-    echo -e "${YELLOW}Введите версию FileShare для установки (или Enter для latest):${NC}"
-    read -p "> " VERSION_INPUT
+    printf "${YELLOW}Введите версию FileShare для установки (или Enter для latest):${NC}\n"
+    printf "> "
+    read -r VERSION_INPUT
     VERSION=${VERSION_INPUT:-latest}
     print_info "Версия: $VERSION"
 
     # Domain
     echo ""
-    echo -e "${YELLOW}Введите домен для сервиса:${NC}"
-    echo -e "  (например: fileshare.local, files.example.com)"
-    read -p "> " DOMAIN
+    printf "${YELLOW}Введите домен для сервиса:${NC}\n"
+    echo "  (например: fileshare.local, files.example.com)"
+    printf "> "
+    read -r DOMAIN
     DOMAIN=${DOMAIN:-fileshare.local}
     print_info "Домен: $DOMAIN"
 
     # SSL Type
     echo ""
-    echo -e "${YELLOW}Выберите тип SSL сертификата:${NC}"
+    printf "${YELLOW}Выберите тип SSL сертификата:${NC}\n"
     echo "  1) Самоподписанный сертификат (для локальной разработки)"
     echo "  2) Let's Encrypt (для публичного домена)"
     echo ""
-    read -p "Выберите [1/2] (по умолчанию: 1): " SSL_CHOICE
+    printf "Выберите [1/2] (по умолчанию: 1): "
+    read -r SSL_CHOICE
     SSL_CHOICE=${SSL_CHOICE:-1}
 
     if [ "$SSL_CHOICE" = "2" ]; then
@@ -98,8 +111,9 @@ collect_config() {
         print_info "Тип: Let's Encrypt"
         
         echo ""
-        echo -e "${YELLOW}Введите email для Let's Encrypt:${NC}"
-        read -p "> " LETSENCRYPT_EMAIL
+        printf "${YELLOW}Введите email для Let's Encrypt:${NC}\n"
+        printf "> "
+        read -r LETSENCRYPT_EMAIL
         if [ -z "$LETSENCRYPT_EMAIL" ]; then
             print_error "Email обязателен для Let's Encrypt!"
             exit 1
@@ -111,18 +125,20 @@ collect_config() {
 
     # Admin secret path
     echo ""
-    echo -e "${YELLOW}Создайте секретный URL для доступа к админке:${NC}"
-    echo -e "  (Например: my-secret-admin-xyz123)"
-    echo -e "  ${BLUE}Этот URL нужно будет ввести в браузере для входа в админку${NC}"
-    read -p "> " ADMIN_PATH
+    printf "${YELLOW}Создайте секретный URL для доступа к админке:${NC}\n"
+    echo "  (Например: my-secret-admin-xyz123)"
+    printf "  ${BLUE}Этот URL нужно будет ввести в браузере для входа в админку${NC}\n"
+    printf "> "
+    read -r ADMIN_PATH
     ADMIN_PATH=${ADMIN_PATH:-$(generate_random_string 16)}
     ADMIN_SECRET_PATH="/${ADMIN_PATH}"
     print_info "Секретный URL: $ADMIN_SECRET_PATH"
 
     # Database password
     echo ""
-    echo -e "${YELLOW}Пароль для базы данных (или Enter для автогенерации):${NC}"
-    read -p "> " DB_PASSWORD_INPUT
+    printf "${YELLOW}Пароль для базы данных (или Enter для автогенерации):${NC}\n"
+    printf "> "
+    read -r DB_PASSWORD_INPUT
     if [ -z "$DB_PASSWORD_INPUT" ]; then
         DB_PASSWORD=$(generate_password 24)
         print_info "Сгенерирован пароль для БД"
@@ -505,7 +521,7 @@ start_services() {
     sleep 10
 
     # Check health
-    if curl -sf http://localhost/api/health > /dev/null 2>&1; then
+    if curl -sf http://localhost/api/health >/dev/null 2>&1; then
         print_success "Сервисы запущены и работают!"
     else
         print_warning "Сервисы запускаются, подождите немного..."
@@ -517,44 +533,40 @@ start_services() {
 print_final_info() {
     print_header "Установка завершена!"
 
-    echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
+    printf "${GREEN}═══════════════════════════════════════════════════════════════${NC}\n"
     echo ""
-    echo -e "  ${BLUE}FileShare успешно установлен из Docker Hub!${NC}"
+    printf "  ${BLUE}FileShare успешно установлен из Docker Hub!${NC}\n"
     echo ""
-    echo -e "  ${YELLOW}Образы:${NC}"
-    echo -e "  Frontend: $FRONTEND_IMAGE:$VERSION"
-    echo -e "  Backend:  $BACKEND_IMAGE:$VERSION"
+    printf "  ${YELLOW}Образы:${NC}\n"
+    echo "  Frontend: $FRONTEND_IMAGE:$VERSION"
+    echo "  Backend:  $BACKEND_IMAGE:$VERSION"
     echo ""
-    echo -e "  ${YELLOW}Адрес сервиса:${NC}"
-    if [ "$SSL_TYPE" = "self-signed" ]; then
-        echo -e "  https://$DOMAIN"
-    else
-        echo -e "  https://$DOMAIN"
-    fi
+    printf "  ${YELLOW}Адрес сервиса:${NC}\n"
+    echo "  https://$DOMAIN"
     echo ""
-    echo -e "  ${YELLOW}Панель администратора:${NC}"
-    echo -e "  https://$DOMAIN$ADMIN_SECRET_PATH"
+    printf "  ${YELLOW}Панель администратора:${NC}\n"
+    echo "  https://$DOMAIN$ADMIN_SECRET_PATH"
     echo ""
-    echo -e "  ${YELLOW}Первый вход в админку:${NC}"
-    echo -e "  Перейдите по секретному URL и создайте логин/пароль"
+    printf "  ${YELLOW}Первый вход в админку:${NC}\n"
+    echo "  Перейдите по секретному URL и создайте логин/пароль"
     echo ""
     if [ "$SSL_TYPE" = "self-signed" ]; then
-        echo -e "  ${YELLOW}⚠ Важно:${NC}"
-        echo -e "  Используется самоподписанный сертификат."
-        echo -e "  Добавьте его в доверенные или примите предупреждение браузера."
+        printf "  ${YELLOW}⚠ Важно:${NC}\n"
+        echo "  Используется самоподписанный сертификат."
+        echo "  Добавьте его в доверенные или примите предупреждение браузера."
         echo ""
     fi
-    echo -e "  ${YELLOW}Полезные команды:${NC}"
-    echo -e "  docker compose logs -f        # Логи"
-    echo -e "  docker compose restart        # Перезапуск"
-    echo -e "  docker compose down           # Остановка"
-    echo -e "  docker compose ps             # Статус контейнеров"
+    printf "  ${YELLOW}Полезные команды:${NC}\n"
+    echo "  docker compose logs -f        # Логи"
+    echo "  docker compose restart        # Перезапуск"
+    echo "  docker compose down           # Остановка"
+    echo "  docker compose ps             # Статус контейнеров"
     echo ""
-    echo -e "  ${YELLOW}Обновление до новой версии:${NC}"
-    echo -e "  Измените VERSION в .env и выполните:"
-    echo -e "  docker compose pull && docker compose up -d"
+    printf "  ${YELLOW}Обновление до новой версии:${NC}\n"
+    echo "  Измените VERSION в .env и выполните:"
+    echo "  docker compose pull && docker compose up -d"
     echo ""
-    echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
+    printf "${GREEN}═══════════════════════════════════════════════════════════════${NC}\n"
 }
 
 # =============================================================================
@@ -563,7 +575,7 @@ print_final_info() {
 
 main() {
     echo ""
-    echo -e "${BLUE}"
+    printf "${BLUE}"
     echo "  ███████╗ ██╗ ██╗      ███████╗ ██████╗██╗  ██╗ █████╗ ██╗  ██╗███████╗"
     echo "  ██╔════╝ ██║ ██║      ██╔════╝██╔════╝██║  ██║██╔══██╗██║  ██║██╔════╝"
     echo "  █████╗   ██║ ██║      █████╗  ██║     ███████║███████║███████║█████╗  "
@@ -571,8 +583,8 @@ main() {
     echo "  ██║     █████╗███████╗███████╗╚██████╗██║  ██║██║  ██║██║  ██║███████╗"
     echo "  ╚═╝     ╚═══╝╚══════╝╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝"
     echo ""
-    echo -e "  ${NC}Сервис обмена файлами и текстом"
-    echo -e "  ${BLUE}Установка из Docker Hub: $DOCKER_USER${NC}"
+    printf "  ${NC}Сервис обмена файлами и текстом\n"
+    printf "  ${BLUE}Установка из Docker Hub: $DOCKER_USER${NC}\n"
     echo ""
 
     check_requirements

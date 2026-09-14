@@ -1,19 +1,29 @@
-#!/bin/bash
+#!/bin/sh
 
 # =============================================================================
 # FileShare — Docker Hub Publisher
 # =============================================================================
 # Скрипт для сборки и публикации образов на Docker Hub
+# POSIX-совместимый (работает с sh, bash, dash)
 # =============================================================================
 
 set -e
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# Colors (через printf для совместимости)
+RED=''
+GREEN=''
+YELLOW=''
+BLUE=''
+NC=''
+
+# Включаем цвета только если терминал поддерживает
+if [ -t 1 ]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    NC='\033[0m'
+fi
 
 # Default values
 DOCKER_USERNAME=""
@@ -25,26 +35,26 @@ PLATFORMS="linux/amd64"
 # Helper functions
 print_header() {
     echo ""
-    echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
-    echo -e "${BLUE}  $1${NC}"
-    echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+    printf "${BLUE}═══════════════════════════════════════════════════════════════${NC}\n"
+    printf "${BLUE}  %s${NC}\n" "$1"
+    printf "${BLUE}═══════════════════════════════════════════════════════════════${NC}\n"
     echo ""
 }
 
 print_success() {
-    echo -e "${GREEN}✓ $1${NC}"
+    printf "${GREEN}✓ %s${NC}\n" "$1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠ $1${NC}"
+    printf "${YELLOW}⚠ %s${NC}\n" "$1"
 }
 
 print_error() {
-    echo -e "${RED}✗ $1${NC}"
+    printf "${RED}✗ %s${NC}\n" "$1"
 }
 
 print_info() {
-    echo -e "${BLUE}ℹ $1${NC}"
+    printf "${BLUE}ℹ %s${NC}\n" "$1"
 }
 
 # Show usage
@@ -56,7 +66,7 @@ usage() {
     echo "  username                   Docker Hub username (обязательный)"
     echo ""
     echo "Опции:"
-    echo "  -u, --username USERNAME    Docker Hub username (альтернатива позиционному аргументу)"
+    echo "  -u, --username USERNAME    Docker Hub username"
     echo "  -v, --version VERSION      Версия для публикации (например: 1.0.0)"
     echo "  --no-latest                Не тэгать как 'latest'"
     echo "  --no-version               Не тэгать с версией"
@@ -72,7 +82,7 @@ usage() {
 }
 
 # Parse arguments
-while [[ $# -gt 0 ]]; do
+while [ $# -gt 0 ]; do
     case $1 in
         -u|--username)
             DOCKER_USERNAME="$2"
@@ -117,20 +127,28 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Check if platform contains comma (multi-arch)
+is_multi_platform() {
+    case "$1" in
+        *,*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 # Check requirements
 check_requirements() {
     print_header "Проверка требований"
 
     # Check Docker
-    if ! command -v docker &> /dev/null; then
+    if ! command -v docker >/dev/null 2>&1; then
         print_error "Docker не установлен!"
         exit 1
     fi
-    print_success "Docker установлен"
+    print_success "Docker установлен: $(docker --version)"
 
     # Check Docker Buildx (нужен только для multi-arch)
-    if ! docker buildx version &> /dev/null; then
-        if [[ "$PLATFORMS" == *","* ]]; then
+    if ! docker buildx version >/dev/null 2>&1; then
+        if is_multi_platform "$PLATFORMS"; then
             print_error "Docker Buildx необходим для multi-arch сборки!"
             exit 1
         else
@@ -146,7 +164,7 @@ check_requirements() {
     if ! docker info 2>&1 | grep -q "Username"; then
         print_warning "Не авторизован в Docker Hub"
         echo ""
-        echo -e "${YELLOW}Введите данные для входа в Docker Hub:${NC}"
+        printf "${YELLOW}Введите данные для входа в Docker Hub:${NC}\n"
         docker login
     else
         print_success "Авторизован в Docker Hub"
@@ -163,13 +181,13 @@ collect_config() {
     if [ -z "$DOCKER_USERNAME" ]; then
         print_error "Docker Hub username не указан!"
         echo ""
-        echo -e "${YELLOW}Использование:${NC}"
+        printf "${YELLOW}Использование:${NC}\n"
         echo "  $0 <username> -v <version>"
         echo ""
-        echo -e "${YELLOW}Пример:${NC}"
+        printf "${YELLOW}Пример:${NC}\n"
         echo "  $0 myuser -v 1.0.0"
         echo ""
-        echo -e "Или используйте флаг ${BLUE}-u${NC}: $0 -u myuser -v 1.0.0"
+        printf "Или используйте флаг ${BLUE}-u${NC}: $0 -u myuser -v 1.0.0\n"
         exit 1
     fi
     print_info "Docker Hub: $DOCKER_USERNAME"
@@ -177,8 +195,9 @@ collect_config() {
     # Version
     if [ -z "$VERSION" ]; then
         echo ""
-        echo -e "${YELLOW}Введите версию для публикации (например: 1.0.0):${NC}"
-        read -p "> " VERSION
+        printf "${YELLOW}Введите версию для публикации (например: 1.0.0):${NC}\n"
+        printf "> "
+        read -r VERSION
         if [ -z "$VERSION" ]; then
             print_error "Версия обязательна!"
             exit 1
@@ -201,14 +220,18 @@ collect_config() {
     echo ""
 
     # Confirm
-    echo -e "${YELLOW}Продолжить публикацию? [Y/n]:${NC}"
-    read -p "> " CONFIRM
+    printf "${YELLOW}Продолжить публикацию? [Y/n]:${NC}\n"
+    printf "> "
+    read -r CONFIRM
     CONFIRM=${CONFIRM:-Y}
     
-    if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
-        print_info "Публикация отменена"
-        exit 0
-    fi
+    case "$CONFIRM" in
+        [Yy]*) ;;
+        *)
+            print_info "Публикация отменена"
+            exit 0
+            ;;
+    esac
 
     echo ""
 }
@@ -217,14 +240,13 @@ collect_config() {
 build_images() {
     print_header "Сборка образов"
 
-    # Для одной платформы используем обычный docker build (быстрее)
-    if [[ "$PLATFORMS" == *","* ]]; then
+    if is_multi_platform "$PLATFORMS"; then
         # Multi-arch сборка через buildx
         if [ "$USE_BUILDX" = true ]; then
             print_info "Использование Docker Buildx для multi-arch сборки..."
             
             # Create builder if not exists
-            if ! docker buildx inspect fileshare-builder &> /dev/null; then
+            if ! docker buildx inspect fileshare-builder >/dev/null 2>&1; then
                 docker buildx create --name fileshare-builder --use
             else
                 docker buildx use fileshare-builder
@@ -232,25 +254,43 @@ build_images() {
 
             # Build frontend
             print_info "Сборка frontend образа..."
-            docker buildx build \
-                --platform $PLATFORMS \
-                --file Dockerfile.frontend \
-                --tag $FRONTEND_IMAGE:$VERSION \
-                $( [ "$PUSH_LATEST" = true ] && echo "--tag $FRONTEND_IMAGE:latest" ) \
-                --push \
-                .
+            if [ "$PUSH_LATEST" = true ]; then
+                docker buildx build \
+                    --platform "$PLATFORMS" \
+                    --file Dockerfile.frontend \
+                    --tag "$FRONTEND_IMAGE:$VERSION" \
+                    --tag "$FRONTEND_IMAGE:latest" \
+                    --push \
+                    .
+            else
+                docker buildx build \
+                    --platform "$PLATFORMS" \
+                    --file Dockerfile.frontend \
+                    --tag "$FRONTEND_IMAGE:$VERSION" \
+                    --push \
+                    .
+            fi
 
             print_success "Frontend образ собран и опубликован"
 
             # Build backend
             print_info "Сборка backend образа..."
-            docker buildx build \
-                --platform $PLATFORMS \
-                --file backend/Dockerfile \
-                --tag $BACKEND_IMAGE:$VERSION \
-                $( [ "$PUSH_LATEST" = true ] && echo "--tag $BACKEND_IMAGE:latest" ) \
-                --push \
-                ./backend
+            if [ "$PUSH_LATEST" = true ]; then
+                docker buildx build \
+                    --platform "$PLATFORMS" \
+                    --file backend/Dockerfile \
+                    --tag "$BACKEND_IMAGE:$VERSION" \
+                    --tag "$BACKEND_IMAGE:latest" \
+                    --push \
+                    ./backend
+            else
+                docker buildx build \
+                    --platform "$PLATFORMS" \
+                    --file backend/Dockerfile \
+                    --tag "$BACKEND_IMAGE:$VERSION" \
+                    --push \
+                    ./backend
+            fi
 
             print_success "Backend образ собран и опубликован"
         else
@@ -263,21 +303,35 @@ build_images() {
 
         # Build frontend
         print_info "Сборка frontend образа..."
-        docker build \
-            --file Dockerfile.frontend \
-            --tag $FRONTEND_IMAGE:$VERSION \
-            $( [ "$PUSH_LATEST" = true ] && echo "--tag $FRONTEND_IMAGE:latest" ) \
-            .
+        if [ "$PUSH_LATEST" = true ]; then
+            docker build \
+                --file Dockerfile.frontend \
+                --tag "$FRONTEND_IMAGE:$VERSION" \
+                --tag "$FRONTEND_IMAGE:latest" \
+                .
+        else
+            docker build \
+                --file Dockerfile.frontend \
+                --tag "$FRONTEND_IMAGE:$VERSION" \
+                .
+        fi
 
         print_success "Frontend образ собран"
 
         # Build backend
         print_info "Сборка backend образа..."
-        docker build \
-            --file backend/Dockerfile \
-            --tag $BACKEND_IMAGE:$VERSION \
-            $( [ "$PUSH_LATEST" = true ] && echo "--tag $BACKEND_IMAGE:latest" ) \
-            ./backend
+        if [ "$PUSH_LATEST" = true ]; then
+            docker build \
+                --file backend/Dockerfile \
+                --tag "$BACKEND_IMAGE:$VERSION" \
+                --tag "$BACKEND_IMAGE:latest" \
+                ./backend
+        else
+            docker build \
+                --file backend/Dockerfile \
+                --tag "$BACKEND_IMAGE:$VERSION" \
+                ./backend
+        fi
 
         print_success "Backend образ собран"
     fi
@@ -288,22 +342,22 @@ build_images() {
 # Push images
 push_images() {
     # Push только для single platform сборки (multi-arch пушится через buildx)
-    if [[ ! "$PLATFORMS" == *","* ]]; then
+    if ! is_multi_platform "$PLATFORMS"; then
         print_header "Публикация образов"
 
         # Push frontend
         print_info "Публикация frontend образа..."
-        docker push $FRONTEND_IMAGE:$VERSION
+        docker push "$FRONTEND_IMAGE:$VERSION"
         if [ "$PUSH_LATEST" = true ]; then
-            docker push $FRONTEND_IMAGE:latest
+            docker push "$FRONTEND_IMAGE:latest"
         fi
         print_success "Frontend опубликован"
 
         # Push backend
         print_info "Публикация backend образа..."
-        docker push $BACKEND_IMAGE:$VERSION
+        docker push "$BACKEND_IMAGE:$VERSION"
         if [ "$PUSH_LATEST" = true ]; then
-            docker push $BACKEND_IMAGE:latest
+            docker push "$BACKEND_IMAGE:latest"
         fi
         print_success "Backend опубликован"
 
@@ -412,32 +466,32 @@ COMPOSEFILE
 print_summary() {
     print_header "Публикация завершена!"
 
-    echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
+    printf "${GREEN}═══════════════════════════════════════════════════════════════${NC}\n"
     echo ""
-    echo -e "  ${BLUE}Образы опубликованы на Docker Hub!${NC}"
+    printf "  ${BLUE}Образы опубликованы на Docker Hub!${NC}\n"
     echo ""
-    echo -e "  ${YELLOW}Frontend:${NC}"
-    echo -e "  $FRONTEND_IMAGE:$VERSION"
+    printf "  ${YELLOW}Frontend:${NC}\n"
+    echo "  $FRONTEND_IMAGE:$VERSION"
     if [ "$PUSH_LATEST" = true ]; then
-        echo -e "  $FRONTEND_IMAGE:latest"
+        echo "  $FRONTEND_IMAGE:latest"
     fi
     echo ""
-    echo -e "  ${YELLOW}Backend:${NC}"
-    echo -e "  $BACKEND_IMAGE:$VERSION"
+    printf "  ${YELLOW}Backend:${NC}\n"
+    echo "  $BACKEND_IMAGE:$VERSION"
     if [ "$PUSH_LATEST" = true ]; then
-        echo -e "  $BACKEND_IMAGE:latest"
+        echo "  $BACKEND_IMAGE:latest"
     fi
     echo ""
-    echo -e "  ${YELLOW}Установка на сервере:${NC}"
-    echo -e "  1. Скопируйте docker-compose.production.yml на сервер"
-    echo -e "  2. Создайте .env файл с настройками"
-    echo -e "  3. Запустите: docker compose -f docker-compose.production.yml up -d"
+    printf "  ${YELLOW}Установка на сервере:${NC}\n"
+    echo "  1. Скопируйте docker-compose.production.yml на сервер"
+    echo "  2. Создайте .env файл с настройками"
+    echo "  3. Запустите: docker compose -f docker-compose.production.yml up -d"
     echo ""
-    echo -e "  ${YELLOW}Полезные команды:${NC}"
-    echo -e "  docker pull $FRONTEND_IMAGE:$VERSION"
-    echo -e "  docker pull $BACKEND_IMAGE:$VERSION"
+    printf "  ${YELLOW}Полезные команды:${NC}\n"
+    echo "  docker pull $FRONTEND_IMAGE:$VERSION"
+    echo "  docker pull $BACKEND_IMAGE:$VERSION"
     echo ""
-    echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
+    printf "${GREEN}═══════════════════════════════════════════════════════════════${NC}\n"
 }
 
 # =============================================================================
@@ -446,7 +500,7 @@ print_summary() {
 
 main() {
     echo ""
-    echo -e "${BLUE}"
+    printf "${BLUE}"
     echo "  ██████╗ ██╗   ██╗██╗██╗     ██╗      ██████╗ ██████╗ ███╗   ██╗███████╗██╗"
     echo "  ██╔══██╗██║   ██║██║██║     ██║     ██╔════╝██╔═══██╗████╗  ██║██╔════╝██║"
     echo "  ██████╔╝██║   ██║██║██║     ██║     ██║     ██║   ██║██╔██╗ ██║█████╗  ██║"
@@ -454,7 +508,7 @@ main() {
     echo "  ██║     ╚██████╔╝██║███████╗███████╗╚██████╗╚██████╔╝██║ ╚████║███████╗██╗"
     echo "  ╚═╝      ╚═════╝ ╚═╝╚══════╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚═╝"
     echo ""
-    echo -e "  ${NC}Публикация на Docker Hub"
+    printf "  ${NC}Публикация на Docker Hub\n"
     echo ""
 
     check_requirements
