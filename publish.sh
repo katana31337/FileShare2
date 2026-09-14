@@ -16,7 +16,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Default values
-DOCKER_USERNAME=""
+DOCKER_USERNAME="katana31337"
 VERSION=""
 PUSH_LATEST=true
 PUSH_VERSION=true

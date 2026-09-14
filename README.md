@@ -44,18 +44,19 @@ docker compose -f docker-compose.production.yml up -d
 # См. секцию SSL ниже
 ```
 
-### Вариант 2: Локальная установка через скрипт
+### Вариант 2: Установка из Docker Hub (рекомендуется)
 
 ```bash
 chmod +x install.sh
 ./install.sh
 ```
 
-Скрипт спросит:
-1. Домен (например `fileshare.local`)
-2. Тип сертификата (самоподписанный / Let's Encrypt)
-3. Секретный URL для админки
-4. Пароль для базы данных
+Скрипт автоматически загрузит образы с Docker Hub (`katana31337/fileshare-frontend` и `katana31337/fileshare-backend`) и спросит:
+1. Версию для установки (или `latest`)
+2. Домен (например `fileshare.local`)
+3. Тип сертификата (самоподписанный / Let's Encrypt)
+4. Секретный URL для админки
+5. Пароль для базы данных
 
 ### Вариант 3: Ручная сборка (для разработки)
 
@@ -80,7 +81,7 @@ docker compose up -d
 
 ```bash
 chmod +x publish.sh
-./publish.sh -u your_dockerhub_username -v 1.0.0
+./publish.sh -u katana31337 -v 1.0.0
 ```
 
 Подробнее см. [PUBLISH.md](PUBLISH.md)
