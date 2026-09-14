@@ -3,11 +3,11 @@ version: '3.8'
 # =============================================================================
 # FileShare — Production Deployment from Docker Hub
 # =============================================================================
+# Образы: katana31337/fileshare-frontend и katana31337/fileshare-backend
 # Использование:
-# 1. Замените YOUR_DOCKERHUB_USERNAME на ваш username
-# 2. Замените 1.0.0 на нужную версию
-# 3. Создайте .env файл с настройками
-# 4. docker compose -f docker-compose.production.yml up -d
+# 1. Замените 1.0.0 на нужную версию в секциях image:
+# 2. Создайте .env файл с настройками
+# 3. docker compose -f docker-compose.production.yml up -d
 # =============================================================================
 
 services:
@@ -32,7 +32,7 @@ services:
 
   # Backend API (from Docker Hub)
   backend:
-    image: YOUR_DOCKERHUB_USERNAME/fileshare-backend:1.0.0
+    image: katana31337/fileshare-backend:1.0.0
     container_name: fileshare-backend
     restart: unless-stopped
     environment:
@@ -67,7 +67,7 @@ services:
 
   # Frontend (from Docker Hub)
   frontend:
-    image: YOUR_DOCKERHUB_USERNAME/fileshare-frontend:1.0.0
+    image: katana31337/fileshare-frontend:1.0.0
     container_name: fileshare-frontend
     restart: unless-stopped
     networks:

@@ -20,7 +20,7 @@ DOCKER_USERNAME=""
 VERSION=""
 PUSH_LATEST=true
 PUSH_VERSION=true
-PLATFORMS="linux/amd64,linux/arm64"
+PLATFORMS="linux/amd64"
 
 # Helper functions
 print_header() {
@@ -49,20 +49,25 @@ print_info() {
 
 # Show usage
 usage() {
-    echo "Использование: $0 [OPTIONS]"
+    echo "Использование: $0 <username> [OPTIONS]"
+    echo "       или:    $0 -u <username> [OPTIONS]"
+    echo ""
+    echo "Аргументы:"
+    echo "  username                   Docker Hub username (обязательный)"
     echo ""
     echo "Опции:"
-    echo "  -u, --username USERNAME    Docker Hub username"
+    echo "  -u, --username USERNAME    Docker Hub username (альтернатива позиционному аргументу)"
     echo "  -v, --version VERSION      Версия для публикации (например: 1.0.0)"
     echo "  --no-latest                Не тэгать как 'latest'"
     echo "  --no-version               Не тэгать с версией"
-    echo "  --platforms PLATFORMS      Платформы для сборки (по умолчанию: linux/amd64,linux/arm64)"
+    echo "  --platforms PLATFORMS      Платформа для сборки (по умолчанию: linux/amd64)"
     echo "  -h, --help                 Показать эту справку"
     echo ""
     echo "Примеры:"
-    echo "  $0 -u myuser -v 1.0.0"
-    echo "  $0 --username myuser --version 1.0.0"
-    echo "  $0 -u myuser -v 1.0.0 --no-latest"
+    echo "  $0 myuser -v 1.0.0                           # Публикация 1.0.0 под myuser"
+    echo "  $0 -u myuser -v 1.0.0                        # То же самое через флаг"
+    echo "  $0 myuser -v 1.0.0 --no-latest               # Только версия, без latest"
+    echo "  $0 myuser -v 1.0.0 --platforms linux/arm64   # Сборка для ARM64"
     echo ""
 }
 
@@ -93,10 +98,21 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        *)
+        -*)
             print_error "Неизвестная опция: $1"
             usage
             exit 1
+            ;;
+        *)
+            # Позиционный аргумент — username
+            if [ -z "$DOCKER_USERNAME" ]; then
+                DOCKER_USERNAME="$1"
+            else
+                print_error "Неожиданный аргумент: $1"
+                usage
+                exit 1
+            fi
+            shift
             ;;
     esac
 done
@@ -112,10 +128,15 @@ check_requirements() {
     fi
     print_success "Docker установлен"
 
-    # Check Docker Buildx (для multi-arch)
+    # Check Docker Buildx (нужен только для multi-arch)
     if ! docker buildx version &> /dev/null; then
-        print_warning "Docker Buildx не найден, будет использоваться стандартная сборка"
-        USE_BUILDX=false
+        if [[ "$PLATFORMS" == *","* ]]; then
+            print_error "Docker Buildx необходим для multi-arch сборки!"
+            exit 1
+        else
+            print_info "Docker Buildx не найден (не требуется для single-platform)"
+            USE_BUILDX=false
+        fi
     else
         print_success "Docker Buildx доступен"
         USE_BUILDX=true
@@ -138,14 +159,18 @@ check_requirements() {
 collect_config() {
     print_header "Конфигурация публикации"
 
-    # Docker Hub username
+    # Docker Hub username (обязательный параметр)
     if [ -z "$DOCKER_USERNAME" ]; then
-        echo -e "${YELLOW}Введите Docker Hub username:${NC}"
-        read -p "> " DOCKER_USERNAME
-        if [ -z "$DOCKER_USERNAME" ]; then
-            print_error "Username обязателен!"
-            exit 1
-        fi
+        print_error "Docker Hub username не указан!"
+        echo ""
+        echo -e "${YELLOW}Использование:${NC}"
+        echo "  $0 <username> -v <version>"
+        echo ""
+        echo -e "${YELLOW}Пример:${NC}"
+        echo "  $0 myuser -v 1.0.0"
+        echo ""
+        echo -e "Или используйте флаг ${BLUE}-u${NC}: $0 -u myuser -v 1.0.0"
+        exit 1
     fi
     print_info "Docker Hub: $DOCKER_USERNAME"
 
@@ -192,42 +217,49 @@ collect_config() {
 build_images() {
     print_header "Сборка образов"
 
-    if [ "$USE_BUILDX" = true ]; then
-        print_info "Использование Docker Buildx для multi-arch сборки..."
-        
-        # Create builder if not exists
-        if ! docker buildx inspect fileshare-builder &> /dev/null; then
-            docker buildx create --name fileshare-builder --use
+    # Для одной платформы используем обычный docker build (быстрее)
+    if [[ "$PLATFORMS" == *","* ]]; then
+        # Multi-arch сборка через buildx
+        if [ "$USE_BUILDX" = true ]; then
+            print_info "Использование Docker Buildx для multi-arch сборки..."
+            
+            # Create builder if not exists
+            if ! docker buildx inspect fileshare-builder &> /dev/null; then
+                docker buildx create --name fileshare-builder --use
+            else
+                docker buildx use fileshare-builder
+            fi
+
+            # Build frontend
+            print_info "Сборка frontend образа..."
+            docker buildx build \
+                --platform $PLATFORMS \
+                --file Dockerfile.frontend \
+                --tag $FRONTEND_IMAGE:$VERSION \
+                $( [ "$PUSH_LATEST" = true ] && echo "--tag $FRONTEND_IMAGE:latest" ) \
+                --push \
+                .
+
+            print_success "Frontend образ собран и опубликован"
+
+            # Build backend
+            print_info "Сборка backend образа..."
+            docker buildx build \
+                --platform $PLATFORMS \
+                --file backend/Dockerfile \
+                --tag $BACKEND_IMAGE:$VERSION \
+                $( [ "$PUSH_LATEST" = true ] && echo "--tag $BACKEND_IMAGE:latest" ) \
+                --push \
+                ./backend
+
+            print_success "Backend образ собран и опубликован"
         else
-            docker buildx use fileshare-builder
+            print_error "Buildx необходим для multi-arch сборки!"
+            exit 1
         fi
-
-        # Build frontend
-        print_info "Сборка frontend образа..."
-        docker buildx build \
-            --platform $PLATFORMS \
-            --file Dockerfile.frontend \
-            --tag $FRONTEND_IMAGE:$VERSION \
-            $( [ "$PUSH_LATEST" = true ] && echo "--tag $FRONTEND_IMAGE:latest" ) \
-            --push \
-            .
-
-        print_success "Frontend образ собран и опубликован"
-
-        # Build backend
-        print_info "Сборка backend образа..."
-        docker buildx build \
-            --platform $PLATFORMS \
-            --file backend/Dockerfile \
-            --tag $BACKEND_IMAGE:$VERSION \
-            $( [ "$PUSH_LATEST" = true ] && echo "--tag $BACKEND_IMAGE:latest" ) \
-            --push \
-            ./backend
-
-        print_success "Backend образ собран и опубликован"
-
     else
-        print_warning "Buildx недоступен, сборка для текущей платформы..."
+        # Single platform - используем обычный docker build (быстрее)
+        print_info "Сборка для платформы: $PLATFORMS"
 
         # Build frontend
         print_info "Сборка frontend образа..."
@@ -237,6 +269,8 @@ build_images() {
             $( [ "$PUSH_LATEST" = true ] && echo "--tag $FRONTEND_IMAGE:latest" ) \
             .
 
+        print_success "Frontend образ собран"
+
         # Build backend
         print_info "Сборка backend образа..."
         docker build \
@@ -245,7 +279,7 @@ build_images() {
             $( [ "$PUSH_LATEST" = true ] && echo "--tag $BACKEND_IMAGE:latest" ) \
             ./backend
 
-        print_success "Образы собраны"
+        print_success "Backend образ собран"
     fi
 
     echo ""
@@ -253,7 +287,8 @@ build_images() {
 
 # Push images
 push_images() {
-    if [ "$USE_BUILDX" = false ]; then
+    # Push только для single platform сборки (multi-arch пушится через buildx)
+    if [[ ! "$PLATFORMS" == *","* ]]; then
         print_header "Публикация образов"
 
         # Push frontend

@@ -8,47 +8,25 @@
 
 ```bash
 chmod +x publish.sh
-./publish.sh -u your_dockerhub_username -v 1.0.0
-```
-
-### Интерактивный режим
-
-```bash
-./publish.sh
-```
-
-Скрипт спросит:
-- Docker Hub username
-- Версию для публикации
-- Подтверждение публикации
-
-### Опции
-
-```bash
-./publish.sh [OPTIONS]
-
-Опции:
-  -u, --username USERNAME    Docker Hub username
-  -v, --version VERSION      Версия для публикации (например: 1.0.0)
-  --no-latest                Не тэгать как 'latest'
-  --no-version               Не тэгать с версией
-  --platforms PLATFORMS      Платформы для сборки (по умолчанию: linux/amd64,linux/arm64)
-  -h, --help                 Показать справку
+./publish.sh <username> -v <version>
 ```
 
 ### Примеры
 
 ```bash
-# Публикация версии 1.0.0 + latest
-./publish.sh -u myuser -v 1.0.0
+# Публикация версии 1.0.0 + latest (быстрая сборка для amd64)
+./publish.sh myuser -v 1.0.0
 
 # Только версия, без latest
-./publish.sh -u myuser -v 1.0.0 --no-latest
+./publish.sh myuser -v 1.0.0 --no-latest
 
-# Сборка только для amd64
-./publish.sh -u myuser -v 1.0.0 --platforms linux/amd64
+# Альтернативный синтаксис через флаг -u
+./publish.sh -u myuser -v 1.0.0
 
-# Интерактивный режим
+# Сборка для ARM64 (будет использоваться buildx)
+./publish.sh myuser -v 1.0.0 --platforms linux/arm64
+
+# Интерактивный режим (спросит username и версию)
 ./publish.sh
 ```
 
@@ -78,15 +56,35 @@ chmod +x publish.sh
 После выполнения скрипта будут созданы образы:
 
 ```
-your_username/fileshare-frontend:1.0.0
-your_username/fileshare-frontend:latest
-your_username/fileshare-backend:1.0.0
-your_username/fileshare-backend:latest
+<username>/fileshare-frontend:1.0.0
+<username>/fileshare-frontend:latest
+<username>/fileshare-backend:1.0.0
+<username>/fileshare-backend:latest
+```
+
+Например, для `./publish.sh myuser -v 1.0.0`:
+```
+myuser/fileshare-frontend:1.0.0
+myuser/fileshare-frontend:latest
+myuser/fileshare-backend:1.0.0
+myuser/fileshare-backend:latest
 ```
 
 ## Установка на сервере
 
-После публикации используйте `docker-compose.production.yml`:
+После публикации используйте `install.sh` для автоматической установки:
+
+```bash
+# На сервере:
+chmod +x install.sh
+./install.sh
+```
+
+Скрипт автоматически загрузит образы с Docker Hub и настроит всё необходимое.
+
+**Важно:** По умолчанию `install.sh` загружает образы из репозитория `katana31337`. Если вы публикуете под другим логином, отредактируйте переменные `DOCKER_USER`, `FRONTEND_IMAGE` и `BACKEND_IMAGE` в начале файла `install.sh`.
+
+Или вручную с `docker-compose.production.yml`:
 
 ```bash
 # 1. Скопируйте на сервер
@@ -94,6 +92,7 @@ scp docker-compose.production.yml user@server:/path/to/fileshare/
 
 # 2. Создайте .env файл
 cat > .env << EOF
+VERSION=1.0.0
 DB_NAME=fileshare
 DB_USER=fileshare
 DB_PASSWORD=your_secure_password
@@ -103,23 +102,32 @@ ADMIN_SECRET_PATH=/your-secret-admin-path
 CORS_ORIGIN=https://yourdomain.com
 EOF
 
-# 3. Настройте SSL (см. основной README)
+# 3. Отредактируйте образы в docker-compose.production.yml
+# Замените katana31337 на ваш username
 
-# 4. Запустите
+# 4. Настройте SSL (см. основной README)
+
+# 5. Запустите
 docker compose -f docker-compose.production.yml up -d
 ```
 
-## Multi-arch сборка
+## Сборка под разные платформы
 
-По умолчанию скрипт собирает образы для:
-- `linux/amd64` (x86_64)
-- `linux/arm64` (ARM64, Apple Silicon, AWS Graviton)
+По умолчанию скрипт собирает образы для `linux/amd64` (x86_64, обычные ПК/серверы) — это быстрая сборка через обычный `docker build`.
 
-Для сборки только для одной архитектуры:
+Если нужна сборка для ARM64 (Apple Silicon, Raspberry Pi, AWS Graviton):
 
 ```bash
-./publish.sh -u myuser -v 1.0.0 --platforms linux/amd64
+./publish.sh -v 1.0.0 --platforms linux/arm64
 ```
+
+Для multi-arch сборки (несколько платформ одновременно) используется Docker Buildx:
+
+```bash
+./publish.sh -v 1.0.0 --platforms linux/amd64,linux/arm64
+```
+
+**Примечание:** Single-platform сборка (по умолчанию) значительно быстрее, так как не использует Buildx.
 
 ## Требования
 
@@ -148,7 +156,7 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: katana31337
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       
       - name: Set up Docker Buildx
@@ -158,7 +166,7 @@ jobs:
         run: |
           chmod +x publish.sh
           ./publish.sh \
-            -u ${{ secrets.DOCKERHUB_USERNAME }} \
+            -u katana31337 \
             -v ${{ github.event.release.tag_name }}
 ```
 
@@ -171,9 +179,9 @@ publish:
   services:
     - docker:20.10-dind
   script:
-    - docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_TOKEN
+    - docker login -u katana31337 -p $DOCKERHUB_TOKEN
     - chmod +x publish.sh
-    - ./publish.sh -u $DOCKERHUB_USERNAME -v $CI_COMMIT_TAG
+    - ./publish.sh -u katana31337 -v $CI_COMMIT_TAG
   only:
     - tags
 ```
@@ -183,43 +191,51 @@ publish:
 Для обновления существующей установки:
 
 ```bash
-# 1. Остановить текущие контейнеры
-docker compose -f docker-compose.production.yml down
+# 1. Опубликуйте новую версию
+./publish.sh myuser -v 1.1.0
 
-# 2. Скачать новые образы
-docker compose -f docker-compose.production.yml pull
+# 2. На сервере измените VERSION в .env
+nano .env  # VERSION=1.1.0
 
-# 3. Запустить с новыми образами
-docker compose -f docker-compose.production.yml up -d
+# 3. Остановить текущие контейнеры
+docker compose down
 
-# 4. Очистить старые образы
+# 4. Скачать новые образы из Docker Hub
+docker compose pull
+
+# 5. Запустить с новыми образами
+docker compose up -d
+
+# 6. Очистить старые образы
 docker image prune -f
 ```
+
+Или используйте install.sh заново — он спросит новую версию и обновит всё автоматически.
 
 ## Откат версии
 
 Если нужно откатиться на предыдущую версию:
 
 ```bash
-# 1. Измените версию в docker-compose.production.yml
-# Замените image: username/fileshare-frontend:1.0.1
-# На: image: username/fileshare-frontend:1.0.0
+# 1. Измените VERSION в .env на предыдущую версию
+nano .env
 
 # 2. Перезапустите
-docker compose -f docker-compose.production.yml down
-docker compose -f docker-compose.production.yml up -d
+docker compose down
+docker compose pull
+docker compose up -d
 ```
 
 ## Удаление образов из Docker Hub
 
 ```bash
 # Через веб-интерфейс
-# https://hub.docker.com/repositories/your_username
+# https://hub.docker.com/repositories/katana31337
 
 # Или через API
 curl -X DELETE \
   -H "Authorization: JWT <token>" \
-  https://hub.docker.com/v2/repositories/your_username/fileshare-frontend/tags/1.0.0/
+  https://hub.docker.com/v2/repositories/katana31337/fileshare-frontend/tags/1.0.0/
 ```
 
 ## Troubleshooting
