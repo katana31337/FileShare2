@@ -81,7 +81,12 @@ docker compose up -d
 
 ```bash
 chmod +x publish.sh
-./publish.sh -u katana31337 -v 1.0.0
+./publish.sh <your-dockerhub-username> -v 1.0.0
+```
+
+Пример:
+```bash
+./publish.sh myuser -v 1.0.0
 ```
 
 Подробнее см. [PUBLISH.md](PUBLISH.md)
