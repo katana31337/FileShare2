@@ -16,7 +16,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Default values
-DOCKER_USERNAME="katana31337"
+DOCKER_USERNAME=""
 VERSION=""
 PUSH_LATEST=true
 PUSH_VERSION=true
@@ -49,10 +49,14 @@ print_info() {
 
 # Show usage
 usage() {
-    echo "Использование: $0 [OPTIONS]"
+    echo "Использование: $0 <username> [OPTIONS]"
+    echo "       или:    $0 -u <username> [OPTIONS]"
+    echo ""
+    echo "Аргументы:"
+    echo "  username                   Docker Hub username (обязательный)"
     echo ""
     echo "Опции:"
-    echo "  -u, --username USERNAME    Docker Hub username (по умолчанию: katana31337)"
+    echo "  -u, --username USERNAME    Docker Hub username (альтернатива позиционному аргументу)"
     echo "  -v, --version VERSION      Версия для публикации (например: 1.0.0)"
     echo "  --no-latest                Не тэгать как 'latest'"
     echo "  --no-version               Не тэгать с версией"
@@ -60,10 +64,10 @@ usage() {
     echo "  -h, --help                 Показать эту справку"
     echo ""
     echo "Примеры:"
-    echo "  $0 -v 1.0.0                                    # Публикация 1.0.0 под katana31337"
-    echo "  $0 -u myuser -v 1.0.0                          # Публикация под другим пользователем"
-    echo "  $0 -v 1.0.0 --no-latest                        # Только версия, без latest"
-    echo "  $0 -v 1.0.0 --platforms linux/arm64            # Сборка для ARM64"
+    echo "  $0 myuser -v 1.0.0                           # Публикация 1.0.0 под myuser"
+    echo "  $0 -u myuser -v 1.0.0                        # То же самое через флаг"
+    echo "  $0 myuser -v 1.0.0 --no-latest               # Только версия, без latest"
+    echo "  $0 myuser -v 1.0.0 --platforms linux/arm64   # Сборка для ARM64"
     echo ""
 }
 
@@ -94,10 +98,21 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        *)
+        -*)
             print_error "Неизвестная опция: $1"
             usage
             exit 1
+            ;;
+        *)
+            # Позиционный аргумент — username
+            if [ -z "$DOCKER_USERNAME" ]; then
+                DOCKER_USERNAME="$1"
+            else
+                print_error "Неожиданный аргумент: $1"
+                usage
+                exit 1
+            fi
+            shift
             ;;
     esac
 done
@@ -144,14 +159,18 @@ check_requirements() {
 collect_config() {
     print_header "Конфигурация публикации"
 
-    # Docker Hub username
+    # Docker Hub username (обязательный параметр)
     if [ -z "$DOCKER_USERNAME" ]; then
-        echo -e "${YELLOW}Введите Docker Hub username:${NC}"
-        read -p "> " DOCKER_USERNAME
-        if [ -z "$DOCKER_USERNAME" ]; then
-            print_error "Username обязателен!"
-            exit 1
-        fi
+        print_error "Docker Hub username не указан!"
+        echo ""
+        echo -e "${YELLOW}Использование:${NC}"
+        echo "  $0 <username> -v <version>"
+        echo ""
+        echo -e "${YELLOW}Пример:${NC}"
+        echo "  $0 myuser -v 1.0.0"
+        echo ""
+        echo -e "Или используйте флаг ${BLUE}-u${NC}: $0 -u myuser -v 1.0.0"
+        exit 1
     fi
     print_info "Docker Hub: $DOCKER_USERNAME"
 

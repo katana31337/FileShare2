@@ -8,50 +8,25 @@
 
 ```bash
 chmod +x publish.sh
-./publish.sh -u katana31337 -v 1.0.0
-```
-
-### Интерактивный режим
-
-```bash
-./publish.sh
-```
-
-Скрипт спросит:
-- Docker Hub username
-- Версию для публикации
-- Подтверждение публикации
-
-### Опции
-
-```bash
-./publish.sh [OPTIONS]
-
-Опции:
-  -u, --username USERNAME    Docker Hub username
-  -v, --version VERSION      Версия для публикации (например: 1.0.0)
-  --no-latest                Не тэгать как 'latest'
-  --no-version               Не тэгать с версией
-  --platforms PLATFORMS      Платформы для сборки (по умолчанию: linux/amd64,linux/arm64)
-  -h, --help                 Показать справку
+./publish.sh <username> -v <version>
 ```
 
 ### Примеры
 
 ```bash
 # Публикация версии 1.0.0 + latest (быстрая сборка для amd64)
-./publish.sh -v 1.0.0
+./publish.sh myuser -v 1.0.0
 
 # Только версия, без latest
-./publish.sh -v 1.0.0 --no-latest
+./publish.sh myuser -v 1.0.0 --no-latest
 
-# Публикация под другим пользователем
+# Альтернативный синтаксис через флаг -u
 ./publish.sh -u myuser -v 1.0.0
 
-# Сборка для ARM64 (если нужно, будет использоваться buildx)
-./publish.sh -v 1.0.0 --platforms linux/arm64
+# Сборка для ARM64 (будет использоваться buildx)
+./publish.sh myuser -v 1.0.0 --platforms linux/arm64
 
-# Интерактивный режим
+# Интерактивный режим (спросит username и версию)
 ./publish.sh
 ```
 
@@ -81,10 +56,18 @@ chmod +x publish.sh
 После выполнения скрипта будут созданы образы:
 
 ```
-katana31337/fileshare-frontend:1.0.0
-katana31337/fileshare-frontend:latest
-katana31337/fileshare-backend:1.0.0
-katana31337/fileshare-backend:latest
+<username>/fileshare-frontend:1.0.0
+<username>/fileshare-frontend:latest
+<username>/fileshare-backend:1.0.0
+<username>/fileshare-backend:latest
+```
+
+Например, для `./publish.sh myuser -v 1.0.0`:
+```
+myuser/fileshare-frontend:1.0.0
+myuser/fileshare-frontend:latest
+myuser/fileshare-backend:1.0.0
+myuser/fileshare-backend:latest
 ```
 
 ## Установка на сервере
@@ -97,7 +80,9 @@ chmod +x install.sh
 ./install.sh
 ```
 
-Скрипт автоматически загрузит образы с Docker Hub (katana31337) и настроит всё необходимое.
+Скрипт автоматически загрузит образы с Docker Hub и настроит всё необходимое.
+
+**Важно:** По умолчанию `install.sh` загружает образы из репозитория `katana31337`. Если вы публикуете под другим логином, отредактируйте переменные `DOCKER_USER`, `FRONTEND_IMAGE` и `BACKEND_IMAGE` в начале файла `install.sh`.
 
 Или вручную с `docker-compose.production.yml`:
 
@@ -117,9 +102,12 @@ ADMIN_SECRET_PATH=/your-secret-admin-path
 CORS_ORIGIN=https://yourdomain.com
 EOF
 
-# 3. Настройте SSL (см. основной README)
+# 3. Отредактируйте образы в docker-compose.production.yml
+# Замените katana31337 на ваш username
 
-# 4. Запустите
+# 4. Настройте SSL (см. основной README)
+
+# 5. Запустите
 docker compose -f docker-compose.production.yml up -d
 ```
 
@@ -203,19 +191,22 @@ publish:
 Для обновления существующей установки:
 
 ```bash
-# 1. Измените VERSION в .env на новую версию
-nano .env
+# 1. Опубликуйте новую версию
+./publish.sh myuser -v 1.1.0
 
-# 2. Остановить текущие контейнеры
+# 2. На сервере измените VERSION в .env
+nano .env  # VERSION=1.1.0
+
+# 3. Остановить текущие контейнеры
 docker compose down
 
-# 3. Скачать новые образы из Docker Hub
+# 4. Скачать новые образы из Docker Hub
 docker compose pull
 
-# 4. Запустить с новыми образами
+# 5. Запустить с новыми образами
 docker compose up -d
 
-# 5. Очистить старые образы
+# 6. Очистить старые образы
 docker image prune -f
 ```
 
