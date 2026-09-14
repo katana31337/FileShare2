@@ -19,20 +19,25 @@ FileShare — клиент-серверное приложение для ано
 
 **Структура:**
 ```
-src/
-├── components/     # Переиспользуемые компоненты
-│   ├── Header.tsx
-│   └── Layout.tsx
-├── pages/          # Страницы приложения
-│   ├── HomePage.tsx        # Загрузка файлов
-│   ├── HistoryPage.tsx     # История сессии
-│   ├── TextSharePage.tsx   # Обмен текстом
-│   ├── AdminSetupPage.tsx  # Первый вход в админку
-│   └── AdminPage.tsx       # Панель администратора
-├── store/          # Zustand store
-│   └── useAppStore.ts
-├── App.tsx         # Роутинг
-└── main.tsx        # Точка входа
+frontend/
+├── src/
+│   ├── components/     # Переиспользуемые компоненты
+│   │   ├── Header.tsx
+│   │   └── Layout.tsx
+│   ├── pages/          # Страницы приложения
+│   │   ├── HomePage.tsx        # Загрузка файлов
+│   │   ├── HistoryPage.tsx     # История сессии
+│   │   ├── TextSharePage.tsx   # Обмен текстом
+│   │   ├── AdminSetupPage.tsx  # Первый вход в админку
+│   │   └── AdminPage.tsx       # Панель администратора
+│   ├── store/          # Zustand store
+│   │   └── useAppStore.ts
+│   ├── App.tsx         # Роутинг
+│   └── main.tsx        # Точка входа
+├── index.html
+├── package.json
+├── tsconfig.json
+└── vite.config.js
 ```
 
 **Принципы:**

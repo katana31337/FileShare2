@@ -3,11 +3,11 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json ./
-# Если есть package-lock.json — используем ci, иначе install
+# Copy frontend files
+COPY frontend/package.json frontend/package-lock.json* ./
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-COPY . .
+COPY frontend/ .
 RUN npm run build
 
 # Production stage - serve with nginx
@@ -19,7 +19,7 @@ RUN rm /etc/nginx/conf.d/default.conf
 # Copy built files
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy custom nginx config (from project root, not from docker/ directory)
+# Copy custom nginx config
 COPY nginx-frontend.conf /etc/nginx/conf.d/default.conf
 
 # Expose port

@@ -15,7 +15,8 @@ PUBLISH.md
 ARCHITECTURE.md
 install.sh
 publish.sh
-generate-secrets.sh
 docker-compose.production.yml
 .env.production.example
 docker-compose.yml
+frontend/node_modules
+frontend/dist
