@@ -77,10 +77,13 @@ export class AdminService {
     );
 
     // Генерируем JWT
+    const signOptions: jwt.SignOptions = {
+      expiresIn: config.jwt.expiresIn as any,
+    };
     const token = jwt.sign(
       { id: admin.id, username: admin.username, role: 'admin' },
       config.jwt.secret,
-      { expiresIn: config.jwt.expiresIn as string | number }
+      signOptions
     );
 
     logger.info(`Admin logged in: ${username}`);
