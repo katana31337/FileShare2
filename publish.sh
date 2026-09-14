@@ -20,7 +20,7 @@ DOCKER_USERNAME="katana31337"
 VERSION=""
 PUSH_LATEST=true
 PUSH_VERSION=true
-PLATFORMS="linux/amd64,linux/arm64"
+PLATFORMS="linux/amd64"
 
 # Helper functions
 print_header() {
@@ -52,17 +52,18 @@ usage() {
     echo "Использование: $0 [OPTIONS]"
     echo ""
     echo "Опции:"
-    echo "  -u, --username USERNAME    Docker Hub username"
+    echo "  -u, --username USERNAME    Docker Hub username (по умолчанию: katana31337)"
     echo "  -v, --version VERSION      Версия для публикации (например: 1.0.0)"
     echo "  --no-latest                Не тэгать как 'latest'"
     echo "  --no-version               Не тэгать с версией"
-    echo "  --platforms PLATFORMS      Платформы для сборки (по умолчанию: linux/amd64,linux/arm64)"
+    echo "  --platforms PLATFORMS      Платформа для сборки (по умолчанию: linux/amd64)"
     echo "  -h, --help                 Показать эту справку"
     echo ""
     echo "Примеры:"
-    echo "  $0 -u myuser -v 1.0.0"
-    echo "  $0 --username myuser --version 1.0.0"
-    echo "  $0 -u myuser -v 1.0.0 --no-latest"
+    echo "  $0 -v 1.0.0                                    # Публикация 1.0.0 под katana31337"
+    echo "  $0 -u myuser -v 1.0.0                          # Публикация под другим пользователем"
+    echo "  $0 -v 1.0.0 --no-latest                        # Только версия, без latest"
+    echo "  $0 -v 1.0.0 --platforms linux/arm64            # Сборка для ARM64"
     echo ""
 }
 
@@ -112,10 +113,15 @@ check_requirements() {
     fi
     print_success "Docker установлен"
 
-    # Check Docker Buildx (для multi-arch)
+    # Check Docker Buildx (нужен только для multi-arch)
     if ! docker buildx version &> /dev/null; then
-        print_warning "Docker Buildx не найден, будет использоваться стандартная сборка"
-        USE_BUILDX=false
+        if [[ "$PLATFORMS" == *","* ]]; then
+            print_error "Docker Buildx необходим для multi-arch сборки!"
+            exit 1
+        else
+            print_info "Docker Buildx не найден (не требуется для single-platform)"
+            USE_BUILDX=false
+        fi
     else
         print_success "Docker Buildx доступен"
         USE_BUILDX=true
@@ -192,42 +198,49 @@ collect_config() {
 build_images() {
     print_header "Сборка образов"
 
-    if [ "$USE_BUILDX" = true ]; then
-        print_info "Использование Docker Buildx для multi-arch сборки..."
-        
-        # Create builder if not exists
-        if ! docker buildx inspect fileshare-builder &> /dev/null; then
-            docker buildx create --name fileshare-builder --use
+    # Для одной платформы используем обычный docker build (быстрее)
+    if [[ "$PLATFORMS" == *","* ]]; then
+        # Multi-arch сборка через buildx
+        if [ "$USE_BUILDX" = true ]; then
+            print_info "Использование Docker Buildx для multi-arch сборки..."
+            
+            # Create builder if not exists
+            if ! docker buildx inspect fileshare-builder &> /dev/null; then
+                docker buildx create --name fileshare-builder --use
+            else
+                docker buildx use fileshare-builder
+            fi
+
+            # Build frontend
+            print_info "Сборка frontend образа..."
+            docker buildx build \
+                --platform $PLATFORMS \
+                --file Dockerfile.frontend \
+                --tag $FRONTEND_IMAGE:$VERSION \
+                $( [ "$PUSH_LATEST" = true ] && echo "--tag $FRONTEND_IMAGE:latest" ) \
+                --push \
+                .
+
+            print_success "Frontend образ собран и опубликован"
+
+            # Build backend
+            print_info "Сборка backend образа..."
+            docker buildx build \
+                --platform $PLATFORMS \
+                --file backend/Dockerfile \
+                --tag $BACKEND_IMAGE:$VERSION \
+                $( [ "$PUSH_LATEST" = true ] && echo "--tag $BACKEND_IMAGE:latest" ) \
+                --push \
+                ./backend
+
+            print_success "Backend образ собран и опубликован"
         else
-            docker buildx use fileshare-builder
+            print_error "Buildx необходим для multi-arch сборки!"
+            exit 1
         fi
-
-        # Build frontend
-        print_info "Сборка frontend образа..."
-        docker buildx build \
-            --platform $PLATFORMS \
-            --file Dockerfile.frontend \
-            --tag $FRONTEND_IMAGE:$VERSION \
-            $( [ "$PUSH_LATEST" = true ] && echo "--tag $FRONTEND_IMAGE:latest" ) \
-            --push \
-            .
-
-        print_success "Frontend образ собран и опубликован"
-
-        # Build backend
-        print_info "Сборка backend образа..."
-        docker buildx build \
-            --platform $PLATFORMS \
-            --file backend/Dockerfile \
-            --tag $BACKEND_IMAGE:$VERSION \
-            $( [ "$PUSH_LATEST" = true ] && echo "--tag $BACKEND_IMAGE:latest" ) \
-            --push \
-            ./backend
-
-        print_success "Backend образ собран и опубликован"
-
     else
-        print_warning "Buildx недоступен, сборка для текущей платформы..."
+        # Single platform - используем обычный docker build (быстрее)
+        print_info "Сборка для платформы: $PLATFORMS"
 
         # Build frontend
         print_info "Сборка frontend образа..."
@@ -237,6 +250,8 @@ build_images() {
             $( [ "$PUSH_LATEST" = true ] && echo "--tag $FRONTEND_IMAGE:latest" ) \
             .
 
+        print_success "Frontend образ собран"
+
         # Build backend
         print_info "Сборка backend образа..."
         docker build \
@@ -245,7 +260,7 @@ build_images() {
             $( [ "$PUSH_LATEST" = true ] && echo "--tag $BACKEND_IMAGE:latest" ) \
             ./backend
 
-        print_success "Образы собраны"
+        print_success "Backend образ собран"
     fi
 
     echo ""
@@ -253,7 +268,8 @@ build_images() {
 
 # Push images
 push_images() {
-    if [ "$USE_BUILDX" = false ]; then
+    # Push только для single platform сборки (multi-arch пушится через buildx)
+    if [[ ! "$PLATFORMS" == *","* ]]; then
         print_header "Публикация образов"
 
         # Push frontend

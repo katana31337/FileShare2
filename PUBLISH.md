@@ -39,14 +39,17 @@ chmod +x publish.sh
 ### Примеры
 
 ```bash
-# Публикация версии 1.0.0 + latest
-./publish.sh -u katana31337 -v 1.0.0
+# Публикация версии 1.0.0 + latest (быстрая сборка для amd64)
+./publish.sh -v 1.0.0
 
 # Только версия, без latest
-./publish.sh -u katana31337 -v 1.0.0 --no-latest
+./publish.sh -v 1.0.0 --no-latest
 
-# Сборка только для amd64
-./publish.sh -u katana31337 -v 1.0.0 --platforms linux/amd64
+# Публикация под другим пользователем
+./publish.sh -u myuser -v 1.0.0
+
+# Сборка для ARM64 (если нужно, будет использоваться buildx)
+./publish.sh -v 1.0.0 --platforms linux/arm64
 
 # Интерактивный режим
 ./publish.sh
@@ -120,17 +123,23 @@ EOF
 docker compose -f docker-compose.production.yml up -d
 ```
 
-## Multi-arch сборка
+## Сборка под разные платформы
 
-По умолчанию скрипт собирает образы для:
-- `linux/amd64` (x86_64)
-- `linux/arm64` (ARM64, Apple Silicon, AWS Graviton)
+По умолчанию скрипт собирает образы для `linux/amd64` (x86_64, обычные ПК/серверы) — это быстрая сборка через обычный `docker build`.
 
-Для сборки только для одной архитектуры:
+Если нужна сборка для ARM64 (Apple Silicon, Raspberry Pi, AWS Graviton):
 
 ```bash
-./publish.sh -u myuser -v 1.0.0 --platforms linux/amd64
+./publish.sh -v 1.0.0 --platforms linux/arm64
 ```
+
+Для multi-arch сборки (несколько платформ одновременно) используется Docker Buildx:
+
+```bash
+./publish.sh -v 1.0.0 --platforms linux/amd64,linux/arm64
+```
+
+**Примечание:** Single-platform сборка (по умолчанию) значительно быстрее, так как не использует Buildx.
 
 ## Требования
 
