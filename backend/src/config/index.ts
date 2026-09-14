@@ -13,7 +13,7 @@ export interface AppConfig {
   };
   jwt: {
     secret: string;
-    expiresIn: string;
+    expiresIn: string | number;
   };
   upload: {
     maxFileSize: number; // bytes
