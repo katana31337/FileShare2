@@ -23,7 +23,7 @@
 | Сервис | Описание | Порт |
 |--------|----------|------|
 | **Frontend** | React SPA (Vite + Tailwind) | 80 (через nginx) |
-| **Backend** | Node.js + Express API | 3001 |
+| **Backend** | Node.js 24 + Express API | 3001 |
 | **Database** | PostgreSQL 16 | 5432 |
 | **Nginx** | Reverse proxy + SSL | 80, 443 |
 
