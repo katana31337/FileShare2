@@ -4,8 +4,9 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 
 # Install dependencies
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY package.json ./
+# Если есть package-lock.json — используем ci, иначе install
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Copy source code
 COPY . .
@@ -19,8 +20,8 @@ FROM node:24-alpine
 WORKDIR /app
 
 # Install production dependencies only
-COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev && npm cache clean --force
+COPY package.json ./
+RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi && npm cache clean --force
 
 # Copy built files
 COPY --from=builder /app/dist ./dist
