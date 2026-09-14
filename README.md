@@ -147,13 +147,18 @@ npx cypress run
 
 ```
 fileshare/
-├── src/                    # Frontend (React)
-│   ├── components/
-│   ├── pages/
-│   ├── store/
-│   ├── App.tsx
-│   └── main.tsx
-├── backend/                # Backend (Express)
+├── frontend/               # Frontend (React + Vite)
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── store/
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   ├── index.html
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── vite.config.js
+├── backend/                # Backend (Express + Node.js 24)
 │   ├── src/
 │   │   ├── config/         # Конфигурация
 │   │   ├── controllers/    # Контроллеры
@@ -169,7 +174,9 @@ fileshare/
 ├── cypress/                # E2E тесты
 ├── docker-compose.yml
 ├── Dockerfile.frontend
+├── nginx-frontend.conf     # Nginx конфиг для frontend
 ├── install.sh              # Скрипт установки
+├── publish.sh              # Скрипт публикации
 └── README.md
 ```
 

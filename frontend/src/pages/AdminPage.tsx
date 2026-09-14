@@ -353,7 +353,7 @@ export default function AdminPage() {
                 </h3>
                 <div className="space-y-3">
                   <InfoRow label="Версия" value="1.0.0" />
-                  <InfoRow label="Node.js" value="20.x LTS" />
+                  <InfoRow label="Node.js" value="24.x LTS" />
                   <InfoRow label="База данных" value="PostgreSQL 16" />
                   <InfoRow label="Хранилище" value="Docker Volume" />
                   <InfoRow label="HTTPS" value="Настроен" />
