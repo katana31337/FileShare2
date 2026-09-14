@@ -1,0 +1,10 @@
+// Test setup
+process.env.NODE_ENV = 'test';
+process.env.DB_HOST = 'localhost';
+process.env.DB_PORT = '5432';
+process.env.DB_NAME = 'fileshare_test';
+process.env.DB_USER = 'test';
+process.env.DB_PASSWORD = 'test';
+process.env.JWT_SECRET = 'test-secret';
+process.env.SESSION_EXPIRY_DAYS = '7';
+process.env.COOKIE_SECRET = 'test-cookie-secret';
