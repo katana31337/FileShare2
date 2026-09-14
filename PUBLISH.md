@@ -156,18 +156,13 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: katana31337
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
       
       - name: Publish images
         run: |
           chmod +x publish.sh
-          ./publish.sh \
-            -u katana31337 \
-            -v ${{ github.event.release.tag_name }}
+          ./publish.sh ${{ secrets.DOCKERHUB_USERNAME }} -v ${{ github.event.release.tag_name }}
 ```
 
 ### GitLab CI
@@ -179,9 +174,9 @@ publish:
   services:
     - docker:20.10-dind
   script:
-    - docker login -u katana31337 -p $DOCKERHUB_TOKEN
+    - docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_TOKEN
     - chmod +x publish.sh
-    - ./publish.sh -u katana31337 -v $CI_COMMIT_TAG
+    - ./publish.sh $DOCKERHUB_USERNAME -v $CI_COMMIT_TAG
   only:
     - tags
 ```
@@ -230,13 +225,15 @@ docker compose up -d
 
 ```bash
 # Через веб-интерфейс
-# https://hub.docker.com/repositories/katana31337
+# https://hub.docker.com/repositories/<username>
 
 # Или через API
 curl -X DELETE \
   -H "Authorization: JWT <token>" \
-  https://hub.docker.com/v2/repositories/katana31337/fileshare-frontend/tags/1.0.0/
+  https://hub.docker.com/v2/repositories/<username>/fileshare-frontend/tags/1.0.0/
 ```
+
+Замените `<username>` на ваш Docker Hub username.
 
 ## Troubleshooting
 
