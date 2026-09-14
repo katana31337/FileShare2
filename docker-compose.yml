@@ -11,7 +11,7 @@ services:
       POSTGRES_USER: ${DB_USER:-fileshare}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-fileshare_secret}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - /datastore/postgres:/var/lib/postgresql/data
       - ./backend/src/database/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
@@ -48,7 +48,7 @@ services:
       ADMIN_SECRET_PATH: ${ADMIN_SECRET_PATH:-/admin-secret-panel}
       CORS_ORIGIN: ${CORS_ORIGIN:-https://localhost}
     volumes:
-      - uploads_data:/app/uploads
+      - /datastore/uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -103,12 +103,6 @@ services:
       - fileshare-network
     profiles:
       - letsencrypt
-
-volumes:
-  postgres_data:
-    driver: local
-  uploads_data:
-    driver: local
 
 networks:
   fileshare-network:

@@ -14,6 +14,9 @@ DOCKER_USER="katana31337"
 FRONTEND_IMAGE="$DOCKER_USER/fileshare-frontend"
 BACKEND_IMAGE="$DOCKER_USER/fileshare-backend"
 
+# Data storage
+DATASTORE_PATH="/datastore"
+
 # Colors (через printf для совместимости)
 RED=''
 GREEN=''
@@ -152,6 +155,26 @@ collect_config() {
 
     echo ""
     print_success "Конфигурация собрана!"
+}
+
+# Create datastore directory
+create_datastore() {
+    print_header "Создание хранилища данных"
+
+    if [ ! -d "$DATASTORE_PATH" ]; then
+        print_info "Создание директории $DATASTORE_PATH..."
+        mkdir -p "$DATASTORE_PATH"
+        chmod 755 "$DATASTORE_PATH"
+        print_success "Директория $DATASTORE_PATH создана"
+    else
+        print_info "Директория $DATASTORE_PATH уже существует"
+    fi
+
+    # Create subdirectories
+    mkdir -p "$DATASTORE_PATH/uploads"
+    mkdir -p "$DATASTORE_PATH/postgres"
+    
+    print_success "Структура хранилища готова"
 }
 
 # Generate SSL certificates
@@ -328,7 +351,7 @@ services:
       POSTGRES_USER: \${DB_USER:-fileshare}
       POSTGRES_PASSWORD: \${DB_PASSWORD}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - $DATASTORE_PATH/postgres:/var/lib/postgresql/data
     networks:
       - fileshare-network
     healthcheck:
@@ -360,7 +383,7 @@ services:
       ADMIN_SECRET_PATH: \${ADMIN_SECRET_PATH}
       CORS_ORIGIN: \${CORS_ORIGIN}
     volumes:
-      - uploads_data:/app/uploads
+      - $DATASTORE_PATH/uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -398,12 +421,6 @@ services:
       - backend
     networks:
       - fileshare-network
-
-volumes:
-  postgres_data:
-    driver: local
-  uploads_data:
-    driver: local
 
 networks:
   fileshare-network:
@@ -589,6 +606,7 @@ main() {
 
     check_requirements
     collect_config
+    create_datastore
     create_nginx_configs
     create_compose
     create_env
