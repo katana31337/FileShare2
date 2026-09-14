@@ -8,8 +8,14 @@ coverage
 .gitignore
 backend
 cypress
-docker
-README.md
-install.sh
 certs
 uploads
+README.md
+PUBLISH.md
+ARCHITECTURE.md
+install.sh
+publish.sh
+generate-secrets.sh
+docker-compose.production.yml
+.env.production.example
+docker-compose.yml

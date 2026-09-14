@@ -43,7 +43,7 @@ src/
 ### 2. Backend (Node.js + Express)
 
 **Технологии:**
-- Node.js 20 LTS
+- Node.js 24 LTS
 - Express.js
 - TypeScript
 - PostgreSQL (pg)
