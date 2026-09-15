@@ -1,226 +1,124 @@
 # FileShare — Сервис обмена файлами и текстом
 
-Анонимный сервис для обмена файлами и текстом. Без регистрации, с отслеживанием по сессии.
+Анонимный сервис для обмена файлами и текстом. Без регистрации, с автоматическим удалением по истечении срока.
 
-## 🏗 Архитектура
+## 🚀 Быстрая установка (одна команда)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/katana31337/FileShare2/refs/heads/main/install.sh | sh
+```
+
+### Установка с параметрами (без интерактивного ввода):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/katana31337/FileShare2/refs/heads/main/install.sh | \
+  DOMAIN=fileshare.example.com \
+  LETSENCRYPT_EMAIL=admin@example.com \
+  SSL_TYPE=letsencrypt \
+  VERSION=latest \
+  sh
+```
+
+## 📋 Требования
+
+- Docker (20.10+)
+- Docker Compose (v2+)
+- 512 MB RAM минимум
+- 1 GB свободного места на диске
+- Открытые порты 80 и 443
+
+## ⚙️ Параметры установки
+
+| Переменная | Описание | По умолчанию |
+|-----------|----------|--------------|
+| `DOMAIN` | Домен для сервиса | `fileshare.local` |
+| `VERSION` | Версия образов Docker Hub | `latest` |
+| `SSL_TYPE` | Тип SSL: `self-signed` или `letsencrypt` | `self-signed` |
+| `LETSENCRYPT_EMAIL` | Email для Let's Encrypt | — |
+| `ADMIN_SECRET_PATH` | Секретный URL для админки | автогенерация |
+| `DB_PASSWORD` | Пароль для PostgreSQL | автогенерация |
+
+## 📁 Структура после установки
+
+```
+/opt/fileshare/
+├── docker-compose.yml    # Конфигурация контейнеров
+├── .env                  # Переменные окружения
+├── certs/                # SSL сертификаты
+└── docker/
+    └── nginx/
+        ├── nginx.conf
+        └── conf.d/
+            └── default.conf
+
+/datastore/
+├── postgres/             # Данные PostgreSQL
+└── uploads/              # Загруженные файлы
+```
+
+## 🔧 Управление
+
+```bash
+cd /opt/fileshare
+
+# Логи
+docker compose logs -f
+
+# Перезапуск
+docker compose restart
+
+# Остановка
+docker compose down
+
+# Статус контейнеров
+docker compose ps
+
+# Обновление до новой версии
+# Измените VERSION в .env, затем:
+docker compose pull && docker compose up -d
+```
+
+## 🏗️ Архитектура
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Nginx     │────▶│  Frontend   │     │ PostgreSQL  │
-│  (SSL/TLS)  │     │  (React)    │     │   (Data)    │
-│  :80/:443   │     │  :80        │     │   :5432     │
+│   Nginx     │────▶│  Frontend   │     │  Backend    │
+│  (80/443)   │     │  (React)    │     │  (Node.js)  │
 └──────┬──────┘     └─────────────┘     └──────┬──────┘
        │                                        │
-       │            ┌─────────────┐             │
-       └───────────▶│  Backend    │─────────────┘
-                    │  (Express)  │
-                    │   :3001     │
-                    └─────────────┘
+       │              ┌─────────────┐           │
+       └─────────────▶│  PostgreSQL │◀──────────┘
+                      │   (Portgres)│
+                      └─────────────┘
 ```
 
-## 📦 Сервисы
+### Контейнеры:
+- **fileshare-nginx** — Reverse proxy, SSL termination
+- **fileshare-frontend** — React SPA (nginx:alpine)
+- **fileshare-backend** — Node.js API (port 3001)
+- **fileshare-db** — PostgreSQL 16
 
-| Сервис | Описание | Порт |
-|--------|----------|------|
-| **Frontend** | React SPA (Vite + Tailwind) | 80 (через nginx) |
-| **Backend** | Node.js 24 + Express API | 3001 |
-| **Database** | PostgreSQL 16 | 5432 |
-| **Nginx** | Reverse proxy + SSL | 80, 443 |
+## 🔐 Безопасность
 
-## 🚀 Быстрый старт
+- Автоматическая генерация паролей и секретов
+- Секретный URL для доступа к админке
+- HTTPS по умолчанию (самоподписанный или Let's Encrypt)
+- HTTP security headers
+- CORS ограничение
+- Сессионные cookies с подписью
 
-### Вариант 1: Установка из Docker Hub (рекомендуется)
+## 📦 Docker Hub образы
+
+- `katana31337/fileshare-frontend`
+- `katana31337/fileshare-backend`
+
+## 🗑️ Удаление
 
 ```bash
-# 1. Создайте .env файл
-cp .env.example .env
-# Отредактируйте .env (пароли, секреты, домен)
-
-# 2. Используйте docker-compose.production.yml
-# (создаётся скриптом publish.sh или вручную)
-docker compose -f docker-compose.production.yml up -d
-
-# 3. Настройте SSL (самоподписанный или Let's Encrypt)
-# См. секцию SSL ниже
+cd /opt/fileshare
+docker compose down
+rm -rf /opt/fileshare /datastore
 ```
-
-### Вариант 2: Установка из Docker Hub (рекомендуется)
-
-```bash
-chmod +x install.sh
-./install.sh
-```
-
-Скрипт автоматически загрузит образы с Docker Hub (`katana31337/fileshare-frontend` и `katana31337/fileshare-backend`) и спросит:
-1. Версию для установки (или `latest`)
-2. Домен (например `fileshare.local`)
-3. Тип сертификата (самоподписанный / Let's Encrypt)
-4. Секретный URL для админки
-5. Пароль для базы данных
-
-### Вариант 3: Ручная сборка (для разработки)
-
-```bash
-# 1. Клонировать и перейти в директорию
-cd fileshare
-
-# 2. Скопировать .env
-cp .env.example .env
-# Отредактировать .env
-
-# 3. Запустить через Docker Compose
-docker compose up -d
-
-# 4. Открыть в браузере
-# https://localhost
-```
-
-### 📦 Публикация на Docker Hub
-
-Для публикации образов на Docker Hub используйте скрипт `publish.sh`:
-
-```bash
-chmod +x publish.sh
-./publish.sh <your-dockerhub-username> -v 1.0.0
-```
-
-Пример:
-```bash
-./publish.sh myuser -v 1.0.0
-```
-
-Подробнее см. [PUBLISH.md](PUBLISH.md)
-
-### 🗑 Удаление
-
-Для полного удаления FileShare используйте скрипт `uninstall.sh`:
-
-```bash
-chmod +x uninstall.sh
-sudo ./uninstall.sh
-```
-
-Скрипт спросит:
-- Удалить Docker образы?
-- Удалить `/datastore` со всеми файлами? (по умолчанию — да)
-- Удалить файлы установки?
-
-## 🔐 Админ-панель
-
-1. Перейдите по секретному URL (указан при установке)
-2. Создайте логин и пароль (минимум 12 символов, буквы, цифры, спецсимволы)
-3. Управляйте настройками сервиса
-
-## 📡 API
-
-### Публичные эндпоинты
-
-| Метод | Путь | Описание |
-|-------|------|----------|
-| GET | `/api/health` | Проверка работоспособности |
-| GET | `/api/session` | Получить ID сессии |
-| POST | `/api/files/upload` | Загрузить файл |
-| GET | `/api/files` | Список файлов сессии |
-| GET | `/api/files/:id/download` | Скачать файл |
-| DELETE | `/api/files/:id` | Удалить файл |
-| POST | `/api/texts` | Создать общий текст |
-| GET | `/api/texts` | Список текстов сессии |
-| GET | `/api/texts/:id` | Получить текст |
-| DELETE | `/api/texts/:id` | Удалить текст |
-
-### Админ-эндпоинты
-
-| Метод | Путь | Описание |
-|-------|------|----------|
-| GET | `/api/admin/status` | Статус инициализации |
-| POST | `/api/admin/setup` | Создание админа |
-| POST | `/api/admin/login` | Авторизация |
-| GET | `/api/admin/settings` | Получить настройки |
-| PUT | `/api/admin/settings` | Обновить настройки |
-| GET | `/api/admin/stats` | Статистика |
-
-## 🧪 Тестирование
-
-### Unit + API тесты (Jest)
-
-```bash
-cd backend
-npm test
-npm run test:coverage
-```
-
-### E2E тесты (Cypress)
-
-```bash
-npx cypress open
-# или
-npx cypress run
-```
-
-## 📁 Структура проекта
-
-```
-fileshare/
-├── frontend/               # Frontend (React + Vite)
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── store/
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── index.html
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── vite.config.js
-├── backend/                # Backend (Express + Node.js 24)
-│   ├── src/
-│   │   ├── config/         # Конфигурация
-│   │   ├── controllers/    # Контроллеры
-│   │   ├── middleware/     # Middleware
-│   │   ├── routes/         # Маршруты
-│   │   ├── services/       # Бизнес-логика
-│   │   ├── utils/          # Утилиты
-│   │   └── database/       # Миграции
-│   ├── tests/              # Тесты
-│   └── package.json
-├── docker/
-│   └── nginx/              # Конфигурация Nginx
-├── cypress/                # E2E тесты
-├── docker-compose.yml
-├── Dockerfile.frontend
-├── nginx-frontend.conf     # Nginx конфиг для frontend
-├── install.sh              # Скрипт установки
-├── publish.sh              # Скрипт публикации
-└── README.md
-```
-
-## 🛡 Безопасность
-
-- HTTPS (самоподписанный или Let's Encrypt)
-- Helmet.js для HTTP заголовков
-- Rate limiting (100 запросов / 15 мин)
-- JWT для авторизации администратора
-- Пароль: минимум 12 символов, буквы, цифры, спецсимволы
-- HttpOnly cookies для сессий
-- CORS настроен на конкретный домен
-
-## ⚙️ Настройки (через админку)
-
-| Параметр | По умолчанию | Описание |
-|----------|-------------|----------|
-| `max_file_size` | 100 MB | Максимальный размер файла |
-| `file_expiry_days` | 7 | Срок хранения файлов |
-| `text_expiry_days` | 7 | Срок хранения текстов |
-| `session_expiry_days` | 7 | Время жизни сессии |
-| `max_files_per_session` | 50 | Максимум файлов на сессию |
-
-## 📋 Принципы (SOLID)
-
-- **S** — Single Responsibility: каждый сервис/контроллер отвечает за одну область
-- **O** — Open/Closed: middleware можно расширять без модификации
-- **L** — Liskov Substitution: интерфейсы сервисов заменяемы
-- **I** — Interface Segregation: узкие интерфейсы контроллеров
-- **D** — Dependency Inversion: сервисы не зависят от конкретной БД
 
 ## 📄 Лицензия
 
