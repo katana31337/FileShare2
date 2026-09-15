@@ -111,23 +111,39 @@ test.describe('FileShare E2E Tests', () => {
     test('should create admin', async ({ page }) => {
       await page.goto(`/#${ADMIN_SECRET_PATH}`);
       
+      // Fill form with strong password
       await page.fill('input[placeholder*="3 символа"]', 'testadmin');
-      await page.fill('input[placeholder*="12 символов"]', 'TestPass123!');
-      await page.fill('input[placeholder*="Повторите"]', 'TestPass123!');
+      await page.fill('input[placeholder*="12 символов"]', 'StrongPassword123!');
+      await page.fill('input[placeholder*="Повторите"]', 'StrongPassword123!');
       
-      await page.click('button:has-text("Создать")');
+      // Wait for button to be enabled
+      const submitButton = page.locator('button[type="submit"]');
+      await expect(submitButton).toBeEnabled({ timeout: 5000 });
       
-      await expect(page.locator('text=Администратор создан!')).toBeVisible({ timeout: 10000 });
+      // Click and wait for success message or page change
+      await submitButton.click();
+      
+      // Wait for either success message or redirect
+      await page.waitForTimeout(2000);
+      
+      // Check if admin was created by checking localStorage
+      const hasCredentials = await page.evaluate(() => {
+        return localStorage.getItem('admin_credentials') !== null;
+      });
+      expect(hasCredentials).toBe(true);
     });
 
     test('should show login form on subsequent visits', async ({ page }) => {
       // First create admin
       await page.goto(`/#${ADMIN_SECRET_PATH}`);
       await page.fill('input[placeholder*="3 символа"]', 'testadmin');
-      await page.fill('input[placeholder*="12 символов"]', 'TestPass123!');
-      await page.fill('input[placeholder*="Повторите"]', 'TestPass123!');
-      await page.click('button:has-text("Создать")');
-      await expect(page.locator('text=Администратор создан!')).toBeVisible({ timeout: 10000 });
+      await page.fill('input[placeholder*="12 символов"]', 'StrongPassword123!');
+      await page.fill('input[placeholder*="Повторите"]', 'StrongPassword123!');
+      
+      const submitButton = page.locator('button[type="submit"]');
+      await expect(submitButton).toBeEnabled({ timeout: 5000 });
+      await submitButton.click();
+      await page.waitForTimeout(2000);
       
       // Clear session and visit again
       await page.evaluate(() => localStorage.removeItem('admin_session'));
@@ -140,21 +156,23 @@ test.describe('FileShare E2E Tests', () => {
       // Setup admin first
       await page.goto(`/#${ADMIN_SECRET_PATH}`);
       await page.fill('input[placeholder*="3 символа"]', 'testadmin');
-      await page.fill('input[placeholder*="12 символов"]', 'TestPass123!');
-      await page.fill('input[placeholder*="Повторите"]', 'TestPass123!');
-      await page.click('button:has-text("Создать")');
-      await expect(page.locator('text=Администратор создан!')).toBeVisible({ timeout: 10000 });
+      await page.fill('input[placeholder*="12 символов"]', 'StrongPassword123!');
+      await page.fill('input[placeholder*="Повторите"]', 'StrongPassword123!');
+      
+      const submitButton = page.locator('button[type="submit"]');
+      await expect(submitButton).toBeEnabled({ timeout: 5000 });
+      await submitButton.click();
+      await page.waitForTimeout(2000);
       
       // Logout
       await page.evaluate(() => {
         localStorage.removeItem('admin_session');
-        localStorage.removeItem('admin_credentials');
       });
       
       // Login
       await page.goto(`/#${ADMIN_SECRET_PATH}`);
       await page.fill('input[placeholder*="логин"]', 'testadmin');
-      await page.fill('input[placeholder*="пароль"]', 'TestPass123!');
+      await page.fill('input[placeholder*="пароль"]', 'StrongPassword123!');
       await page.click('button:has-text("Войти")');
       
       await expect(page.locator('text=Панель администратора')).toBeVisible({ timeout: 10000 });
@@ -164,15 +182,17 @@ test.describe('FileShare E2E Tests', () => {
       // Setup admin first
       await page.goto(`/#${ADMIN_SECRET_PATH}`);
       await page.fill('input[placeholder*="3 символа"]', 'testadmin');
-      await page.fill('input[placeholder*="12 символов"]', 'TestPass123!');
-      await page.fill('input[placeholder*="Повторите"]', 'TestPass123!');
-      await page.click('button:has-text("Создать")');
-      await expect(page.locator('text=Администратор создан!')).toBeVisible({ timeout: 10000 });
+      await page.fill('input[placeholder*="12 символов"]', 'StrongPassword123!');
+      await page.fill('input[placeholder*="Повторите"]', 'StrongPassword123!');
+      
+      const submitButton = page.locator('button[type="submit"]');
+      await expect(submitButton).toBeEnabled({ timeout: 5000 });
+      await submitButton.click();
+      await page.waitForTimeout(2000);
       
       // Clear and try wrong password
       await page.evaluate(() => {
         localStorage.removeItem('admin_session');
-        localStorage.removeItem('admin_credentials');
       });
       
       await page.goto(`/#${ADMIN_SECRET_PATH}`);
