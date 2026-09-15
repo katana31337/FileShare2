@@ -30,6 +30,11 @@ export interface AppSettings {
   serviceName: string;
 }
 
+interface AdminCredentials {
+  username: string;
+  passwordHash: string;
+}
+
 interface AppState {
   // Session
   sessionId: string | null;
@@ -47,6 +52,7 @@ interface AppState {
   // Admin
   adminInitialized: boolean;
   isAdmin: boolean;
+  adminCredentials: AdminCredentials | null;
   
   // Actions
   setSessionId: (id: string) => void;
@@ -57,6 +63,7 @@ interface AppState {
   updateSettings: (settings: Partial<AppSettings>) => void;
   setAdminInitialized: (value: boolean) => void;
   setIsAdmin: (value: boolean) => void;
+  setAdminCredentials: (credentials: AdminCredentials | null) => void;
   clearExpiredItems: () => void;
 }
 
@@ -86,6 +93,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   settings: defaultSettings,
   adminInitialized: false,
   isAdmin: false,
+  adminCredentials: null,
 
   setSessionId: (id) =>
     set({ sessionId: id, sessionActive: true }),
@@ -117,6 +125,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setAdminInitialized: (value) => set({ adminInitialized: value }),
   setIsAdmin: (value) => set({ isAdmin: value }),
+  setAdminCredentials: (credentials) => set({ adminCredentials: credentials }),
 
   clearExpiredItems: () => {
     const now = new Date();

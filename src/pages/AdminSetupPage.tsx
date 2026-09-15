@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Shield, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { getConfig } from '../config';
+import { hashPassword } from '../utils/auth';
 
 interface PasswordValidation {
   length: boolean;
@@ -18,7 +19,8 @@ export default function AdminSetupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [adminUrl, setAdminUrl] = useState('');
-  const { setAdminInitialized } = useAppStore();
+  const [loading, setLoading] = useState(false);
+  const { setAdminInitialized, setAdminCredentials, setIsAdmin } = useAppStore();
 
   useEffect(() => {
     try {
@@ -42,11 +44,41 @@ export default function AdminSetupPage() {
   const passwordsMatch = password === confirmPassword;
   const canSubmit = username.length >= 3 && isAllValid && passwordsMatch;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
-    setSubmitted(true);
-    setAdminInitialized(true);
+    
+    setLoading(true);
+    try {
+      // Хешируем пароль
+      const passwordHash = await hashPassword(password);
+      
+      // Сохраняем в store
+      setAdminCredentials({
+        username,
+        passwordHash
+      });
+      
+      // Сохраняем в localStorage для персистентности
+      localStorage.setItem('admin_credentials', JSON.stringify({
+        username,
+        passwordHash
+      }));
+      
+      // Автоматически авторизуем
+      setAdminInitialized(true);
+      setIsAdmin(true);
+      localStorage.setItem('admin_session', JSON.stringify({
+        username,
+        timestamp: Date.now()
+      }));
+      
+      setSubmitted(true);
+    } catch (err) {
+      console.error('Error creating admin:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) {
@@ -163,10 +195,10 @@ export default function AdminSetupPage() {
           {/* Submit */}
           <button
             type="submit"
-            disabled={!canSubmit}
+            disabled={!canSubmit || loading}
             className="w-full py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-6"
           >
-            Создать администратора
+            {loading ? 'Создание...' : 'Создать администратора'}
           </button>
         </form>
 
