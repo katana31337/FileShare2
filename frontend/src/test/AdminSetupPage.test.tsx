@@ -89,7 +89,7 @@ describe('AdminSetupPage Component', () => {
     await user.click(screen.getByRole('button', { name: /Создать/i }));
     
     await waitFor(() => {
-      expect(screen.getByText(/Администратор создан/i)).toBeInTheDocument();
+      expect(screen.getByText(/Администратор создан!/i)).toBeInTheDocument();
     });
     
     // Check that credentials were saved

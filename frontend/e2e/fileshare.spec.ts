@@ -117,7 +117,7 @@ test.describe('FileShare E2E Tests', () => {
       
       await page.click('button:has-text("Создать")');
       
-      await expect(page.locator('text=Администратор создан')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('text=Администратор создан!')).toBeVisible({ timeout: 10000 });
     });
 
     test('should show login form on subsequent visits', async ({ page }) => {
@@ -127,7 +127,7 @@ test.describe('FileShare E2E Tests', () => {
       await page.fill('input[placeholder*="12 символов"]', 'TestPass123!');
       await page.fill('input[placeholder*="Повторите"]', 'TestPass123!');
       await page.click('button:has-text("Создать")');
-      await expect(page.locator('text=Администратор создан')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('text=Администратор создан!')).toBeVisible({ timeout: 10000 });
       
       // Clear session and visit again
       await page.evaluate(() => localStorage.removeItem('admin_session'));
@@ -143,7 +143,7 @@ test.describe('FileShare E2E Tests', () => {
       await page.fill('input[placeholder*="12 символов"]', 'TestPass123!');
       await page.fill('input[placeholder*="Повторите"]', 'TestPass123!');
       await page.click('button:has-text("Создать")');
-      await expect(page.locator('text=Администратор создан')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('text=Администратор создан!')).toBeVisible({ timeout: 10000 });
       
       // Logout
       await page.evaluate(() => {
@@ -167,7 +167,7 @@ test.describe('FileShare E2E Tests', () => {
       await page.fill('input[placeholder*="12 символов"]', 'TestPass123!');
       await page.fill('input[placeholder*="Повторите"]', 'TestPass123!');
       await page.click('button:has-text("Создать")');
-      await expect(page.locator('text=Администратор создан')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('text=Администратор создан!')).toBeVisible({ timeout: 10000 });
       
       // Clear and try wrong password
       await page.evaluate(() => {
