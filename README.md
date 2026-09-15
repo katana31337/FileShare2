@@ -2,21 +2,10 @@
 
 Анонимный сервис для обмена файлами и текстом. Без регистрации, с автоматическим удалением по истечении срока.
 
-## 🚀 Быстрая установка (одна команда)
+## 🚀 Быстрая установка
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/katana31337/FileShare2/refs/heads/main/install.sh | sh
-```
-
-### Установка с параметрами (без интерактивного ввода):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/katana31337/FileShare2/refs/heads/main/install.sh | \
-  DOMAIN=fileshare.example.com \
-  LETSENCRYPT_EMAIL=admin@example.com \
-  SSL_TYPE=letsencrypt \
-  VERSION=latest \
-  sh
 ```
 
 ## 📋 Требования
@@ -27,55 +16,29 @@ curl -fsSL https://raw.githubusercontent.com/katana31337/FileShare2/refs/heads/m
 - 1 GB свободного места на диске
 - Открытые порты 80 и 443
 
-## ⚙️ Параметры установки
-
-| Переменная | Описание | По умолчанию |
-|-----------|----------|--------------|
-| `DOMAIN` | Домен для сервиса | `fileshare.local` |
-| `VERSION` | Версия образов Docker Hub | `latest` |
-| `SSL_TYPE` | Тип SSL: `self-signed` или `letsencrypt` | `self-signed` |
-| `LETSENCRYPT_EMAIL` | Email для Let's Encrypt | — |
-| `ADMIN_SECRET_PATH` | Секретный URL для админки | автогенерация |
-| `DB_PASSWORD` | Пароль для PostgreSQL | автогенерация |
-
-## 📁 Структура после установки
-
-```
-/opt/fileshare/
-├── docker-compose.yml    # Конфигурация контейнеров
-├── .env                  # Переменные окружения
-├── certs/                # SSL сертификаты
-└── docker/
-    └── nginx/
-        ├── nginx.conf
-        └── conf.d/
-            └── default.conf
-
-/datastore/
-├── postgres/             # Данные PostgreSQL
-└── uploads/              # Загруженные файлы
-```
-
-## 🔧 Управление
+## 🔧 Ручная установка
 
 ```bash
-cd /opt/fileshare
+# Клонировать репозиторий
+git clone https://github.com/katana31337/FileShare2.git
+cd FileShare2
 
-# Логи
-docker compose logs -f
+# Запустить установку
+chmod +x install.sh
+./install.sh
+```
 
-# Перезапуск
-docker compose restart
+## 📁 Структура проекта
 
-# Остановка
-docker compose down
-
-# Статус контейнеров
-docker compose ps
-
-# Обновление до новой версии
-# Измените VERSION в .env, затем:
-docker compose pull && docker compose up -d
+```
+.
+├── frontend/           # React SPA
+├── backend/            # Node.js API
+├── docker/             # Nginx конфигурация
+├── docker-compose.yml  # Локальная разработка
+├── docker-compose.production.yml  # Production из Docker Hub
+├── Dockerfile.frontend # Сборка frontend
+└── install.sh          # Скрипт установки
 ```
 
 ## 🏗️ Архитектура
@@ -115,9 +78,8 @@ docker compose pull && docker compose up -d
 ## 🗑️ Удаление
 
 ```bash
-cd /opt/fileshare
 docker compose down
-rm -rf /opt/fileshare /datastore
+rm -rf /datastore
 ```
 
 ## 📄 Лицензия
