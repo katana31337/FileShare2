@@ -70,6 +70,8 @@ services:
     image: katana31337/fileshare-frontend:1.0.0
     container_name: fileshare-frontend
     restart: unless-stopped
+    volumes:
+      - /datastore/frontend-config/config.json:/usr/share/nginx/html/config.json:ro
     networks:
       - fileshare-network
 

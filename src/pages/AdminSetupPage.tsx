@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Shield, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import { getConfig } from '../config';
 
 interface PasswordValidation {
   length: boolean;
@@ -16,7 +17,17 @@ export default function AdminSetupPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [adminUrl, setAdminUrl] = useState('');
   const { setAdminInitialized } = useAppStore();
+
+  useEffect(() => {
+    try {
+      const config = getConfig();
+      setAdminUrl(`#/${config.adminSecretPath}`);
+    } catch (e) {
+      setAdminUrl('#/admin');
+    }
+  }, []);
 
   const validatePassword = (pwd: string): PasswordValidation => ({
     length: pwd.length >= 12,
@@ -52,7 +63,7 @@ export default function AdminSetupPage() {
             Панель администратора доступна. Вы будете перенаправлены.
           </p>
           <a
-            href="#/admin"
+            href={adminUrl}
             className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
           >
             Перейти в админку

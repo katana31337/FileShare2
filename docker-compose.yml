@@ -67,6 +67,8 @@ services:
       dockerfile: Dockerfile.frontend
     container_name: fileshare-frontend
     restart: unless-stopped
+    volumes:
+      - /datastore/frontend-config/config.json:/usr/share/nginx/html/config.json:ro
     depends_on:
       - backend
     networks:
