@@ -1,0 +1,82 @@
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: fileshare-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fileshare
+      POSTGRES_USER: fileshare
+      POSTGRES_PASSWORD: test_password
+    networks:
+      - fileshare-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fileshare"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Backend API (built locally)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fileshare-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: fileshare
+      DB_USER: fileshare
+      DB_PASSWORD: test_password
+      JWT_SECRET: test_jwt_secret_for_ci
+      JWT_EXPIRES_IN: 24h
+      MAX_FILE_SIZE: 104857600
+      UPLOAD_PATH: /app/uploads
+      SESSION_EXPIRY_DAYS: 7
+      SESSION_COOKIE_NAME: fs_sid
+      COOKIE_SECRET: test_cookie_secret_for_ci
+      ADMIN_SECRET_PATH: /test-admin-secret
+      CORS_ORIGIN: http://localhost
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - fileshare-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Frontend (built locally)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: fileshare-frontend
+    restart: unless-stopped
+    networks:
+      - fileshare-network
+
+  # Nginx (reverse proxy)
+  nginx:
+    image: nginx:alpine
+    container_name: fileshare-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - fileshare-network
+
+networks:
+  fileshare-network:
+    driver: bridge

@@ -85,7 +85,11 @@ cd backend && npm test  # Backend тесты
 
 ### E2E Tests
 ```bash
-npx playwright test   # Сквозные тесты
+# Локально
+docker compose -f docker-compose.test.yml up -d
+npx playwright test
+
+# Или через GitHub Actions (автоматически)
 ```
 
 ### Coverage
@@ -94,7 +98,9 @@ npm run test:coverage # Frontend покрытие
 cd backend && npm run test:coverage  # Backend покрытие
 ```
 
-Подробная документация: [TESTING.md](TESTING.md)
+Подробная документация:
+- [TESTING.md](TESTING.md) — полное руководство по тестированию
+- [DOCKER_TEST.md](DOCKER_TEST.md) — тестовое Docker окружение
 
 ## 🚀 CI/CD
 
