@@ -233,6 +233,67 @@ setup_ssl() {
         print_success "Самоподписанный сертификат создан"
         print_warning "Браузер будет предупреждать о недоверенном сертификате — это нормально"
 
+        # Создаём SSL конфиг nginx для self-signed
+        cat > docker/nginx/conf.d/default.conf << SSLCONF
+server {
+    listen 443 ssl http2;
+    server_name _;
+
+    ssl_certificate /etc/nginx/ssl/cert.pem;
+    ssl_certificate_key /etc/nginx/ssl/key.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+
+    add_header Strict-Transport-Security "max-age=63072000" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript;
+
+    location /api/ {
+        proxy_pass http://backend:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        client_max_body_size 100M;
+    }
+
+    location / {
+        proxy_pass http://frontend:80;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+    }
+}
+
+server {
+    listen 80;
+    server_name _;
+
+    location /api/ {
+        proxy_pass http://backend:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        client_max_body_size 100M;
+    }
+
+    location / {
+        proxy_pass http://frontend:80;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+    }
+}
+SSLCONF
+
+        print_success "SSL конфиг nginx создан"
+
     elif [ "$SSL_TYPE" = "letsencrypt" ]; then
         print_info "Получение сертификата Let's Encrypt..."
         
