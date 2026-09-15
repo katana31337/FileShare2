@@ -210,8 +210,19 @@ create_datastore() {
     # Create subdirectories
     mkdir -p "$DATASTORE_PATH/uploads"
     mkdir -p "$DATASTORE_PATH/postgres"
+    mkdir -p "$DATASTORE_PATH/frontend-config"
+    
+    # Create frontend config.json with admin secret path
+    # Remove leading slash from ADMIN_SECRET_PATH for config
+    ADMIN_PATH_NO_SLASH=$(echo "$ADMIN_SECRET_PATH" | sed 's/^\///')
+    cat > "$DATASTORE_PATH/frontend-config/config.json" << CONFIGJSON
+{
+  "adminSecretPath": "$ADMIN_PATH_NO_SLASH"
+}
+CONFIGJSON
     
     print_success "Структура хранилища готова"
+    print_success "Конфигурация frontend создана (секретный путь: $ADMIN_PATH_NO_SLASH)"
 }
 
 # Generate SSL certificates
@@ -498,6 +509,8 @@ services:
     image: \${FRONTEND_IMAGE:-$FRONTEND_IMAGE}:\${VERSION:-latest}
     container_name: fileshare-frontend
     restart: unless-stopped
+    volumes:
+      - $DATASTORE_PATH/frontend-config/config.json:/usr/share/nginx/html/config.json:ro
     networks:
       - fileshare-network
 
@@ -660,10 +673,11 @@ print_final_info() {
     echo "  https://$DOMAIN"
     echo ""
     printf "  ${YELLOW}Панель администратора:${NC}\n"
-    echo "  https://$DOMAIN$ADMIN_SECRET_PATH"
+    echo "  https://$DOMAIN/#$ADMIN_SECRET_PATH"
     echo ""
     printf "  ${YELLOW}Первый вход в админку:${NC}\n"
     echo "  Перейдите по секретному URL и создайте логин/пароль"
+    echo "  (URL содержит случайный токен — без него админка недоступна)"
     echo ""
     if [ "$SSL_TYPE" = "self-signed" ]; then
         printf "  ${YELLOW}⚠ Важно:${NC}\n"
