@@ -1,30 +1,50 @@
-import { useState } from 'react';
+import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import HomePage from './pages/HomePage';
 import HistoryPage from './pages/HistoryPage';
 import TextSharePage from './pages/TextSharePage';
+import AdminSetupPage from './pages/AdminSetupPage';
+import AdminPage from './pages/AdminPage';
 
-export default function App() {
-  const [currentPage, setCurrentPage] = useState('home');
+function Layout() {
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const renderPage = () => {
-    switch (currentPage) {
+  // Определяем текущую страницу из URL
+  const getPageFromPath = (path: string): string => {
+    if (path === '/' || path === '') return 'home';
+    if (path === '/history') return 'history';
+    if (path === '/text-share') return 'text-share';
+    return 'home';
+  };
+
+  const currentPage = getPageFromPath(location.pathname);
+
+  const handleNavigate = (page: string) => {
+    switch (page) {
       case 'home':
-        return <HomePage />;
+        navigate('/');
+        break;
       case 'history':
-        return <HistoryPage />;
+        navigate('/history');
+        break;
       case 'text-share':
-        return <TextSharePage />;
+        navigate('/text-share');
+        break;
       default:
-        return <HomePage />;
+        navigate('/');
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Header currentPage={currentPage} onNavigate={setCurrentPage} />
+      <Header currentPage={currentPage} onNavigate={handleNavigate} />
       <main className="flex-1">
-        {renderPage()}
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/history" element={<HistoryPage />} />
+          <Route path="/text-share" element={<TextSharePage />} />
+        </Routes>
       </main>
       <footer className="bg-white border-t border-gray-200 py-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -46,5 +66,20 @@ export default function App() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <HashRouter>
+      <Routes>
+        {/* Админка без общего layout */}
+        <Route path="/admin/setup" element={<AdminSetupPage />} />
+        <Route path="/admin" element={<AdminPage />} />
+
+        {/* Основной layout */}
+        <Route path="/*" element={<Layout />} />
+      </Routes>
+    </HashRouter>
   );
 }
