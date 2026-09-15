@@ -50,14 +50,6 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
             ))}
           </nav>
 
-          {/* Session indicator */}
-          <div className="hidden md:flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-xs font-medium text-green-700">Сессия активна</span>
-            </div>
-          </div>
-
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
