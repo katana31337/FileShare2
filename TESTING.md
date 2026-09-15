@@ -8,7 +8,6 @@
 Тестирование отдельных компонентов и утилит.
 
 ```bash
-cd frontend
 npm test              # Запустить тесты
 npm run test:watch    # Watch mode
 npm run test:coverage # С покрытием
@@ -55,7 +54,6 @@ npm run test:integration
 Сквозное тестирование пользовательских сценариев.
 
 ```bash
-cd frontend
 npm install -D @playwright/test
 npx playwright install
 npx playwright test
@@ -98,10 +96,11 @@ npx playwright test
 npm run test:coverage
 ```
 
-Отчёт генерируется в `frontend/coverage/`
+Отчёт генерируется в `coverage/`
 
 ### Backend
 ```bash
+cd backend
 npm run test:coverage
 ```
 

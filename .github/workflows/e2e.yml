@@ -16,30 +16,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
+          cache: 'npm'
 
-      - name: Install frontend dependencies
-        run: |
-          cd frontend
-          npm ci
+      - name: Install dependencies
+        run: npm ci || npm install
 
-      - name: Install backend dependencies
-        run: |
-          cd backend
-          npm ci
-
-      - name: Install Playwright
-        run: |
-          npm install -D @playwright/test
-          npx playwright install --with-deps chromium
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
       - name: Build frontend
-        run: |
-          cd frontend
-          npm run build
+        run: npm run build
 
       - name: Create environment file
         run: |
