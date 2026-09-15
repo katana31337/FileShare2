@@ -42,8 +42,13 @@ function AppRoutes() {
       <Route path={`/${secretPath}/setup`} element={<AdminSetupPage />} />
       <Route path={`/${secretPath}`} element={<AdminPage />} />
 
-      {/* Все остальные пути — основной layout */}
-      <Route path="/*" element={<Layout />} />
+      {/* Основной layout с страницами */}
+      <Route path="/" element={<Layout><HomePage /></Layout>} />
+      <Route path="/history" element={<Layout><HistoryPage /></Layout>} />
+      <Route path="/text-share" element={<Layout><TextSharePage /></Layout>} />
+      
+      {/* 404 для всех остальных путей */}
+      <Route path="*" element={<Layout><HomePage /></Layout>} />
     </Routes>
   );
 }

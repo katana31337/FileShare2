@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { HashRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import HomePage from './pages/HomePage';
 import HistoryPage from './pages/HistoryPage';
@@ -8,7 +8,7 @@ import AdminSetupPage from './pages/AdminSetupPage';
 import AdminPage from './pages/AdminPage';
 import { loadConfig, AppConfig } from './config';
 
-function Layout() {
+function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -42,11 +42,7 @@ function Layout() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header currentPage={currentPage} onNavigate={handleNavigate} />
       <main className="flex-1">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/history" element={<HistoryPage />} />
-          <Route path="/text-share" element={<TextSharePage />} />
-        </Routes>
+        {children}
       </main>
       <footer className="bg-white border-t border-gray-200 py-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -105,8 +101,13 @@ function AppRoutes() {
       <Route path={`/${secretPath}/setup`} element={<AdminSetupPage />} />
       <Route path={`/${secretPath}`} element={<AdminPage />} />
 
-      {/* Все остальные пути — основной layout */}
-      <Route path="/*" element={<Layout />} />
+      {/* Основной layout с страницами */}
+      <Route path="/" element={<Layout><HomePage /></Layout>} />
+      <Route path="/history" element={<Layout><HistoryPage /></Layout>} />
+      <Route path="/text-share" element={<Layout><TextSharePage /></Layout>} />
+      
+      {/* 404 для всех остальных путей */}
+      <Route path="*" element={<Layout><HomePage /></Layout>} />
     </Routes>
   );
 }
