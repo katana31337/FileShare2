@@ -1,5 +1,6 @@
 import { FileUp, Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface HeaderProps {
   currentPage: string;

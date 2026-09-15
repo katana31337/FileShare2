@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import {
   Settings,
@@ -9,10 +10,12 @@ import {
   Clock,
   Shield,
   BarChart3,
+  LogOut,
 } from 'lucide-react';
 
 export default function AdminPage() {
-  const { settings, updateSettings, uploadedFiles, sharedTexts } = useAppStore();
+  const navigate = useNavigate();
+  const { settings, updateSettings, uploadedFiles, sharedTexts, setIsAdmin } = useAppStore();
   const [activeSection, setActiveSection] = useState('general');
   const [saved, setSaved] = useState(false);
 
@@ -22,6 +25,14 @@ export default function AdminPage() {
     updateSettings(localSettings);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleLogout = () => {
+    // Очищаем сессию
+    localStorage.removeItem('admin_session');
+    setIsAdmin(false);
+    // Перенаправляем на страницу входа
+    navigate(0); // Перезагружаем страницу
   };
 
   const sections = [
@@ -39,26 +50,35 @@ export default function AdminPage() {
           <h1 className="text-2xl font-bold text-gray-800">Панель администратора</h1>
           <p className="text-gray-500">Управление настройками сервиса</p>
         </div>
-        <button
-          onClick={handleSave}
-          className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${
-            saved
-              ? 'bg-green-500 text-white'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
-          }`}
-        >
-          {saved ? (
-            <>
-              <Save className="w-4 h-4" />
-              Сохранено!
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4" />
-              Сохранить
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleLogout}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-gray-600 hover:bg-gray-100 transition-all"
+          >
+            <LogOut className="w-4 h-4" />
+            Выйти
+          </button>
+          <button
+            onClick={handleSave}
+            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${
+              saved
+                ? 'bg-green-500 text-white'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
+          >
+            {saved ? (
+              <>
+                <Save className="w-4 h-4" />
+                Сохранено!
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Сохранить
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">
