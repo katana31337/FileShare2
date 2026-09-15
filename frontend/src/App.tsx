@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import HistoryPage from './pages/HistoryPage';
@@ -8,7 +8,7 @@ import AdminPage from './pages/AdminPage';
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         {/* Admin setup (first-time) */}
         <Route path="/admin/setup" element={<AdminSetupPage />} />
@@ -21,7 +21,7 @@ function App() {
           <Route path="/admin" element={<AdminPage />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
