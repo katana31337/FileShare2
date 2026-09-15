@@ -5,9 +5,30 @@
 # =============================================================================
 # Устанавливает FileShare из Docker Hub (katana31337)
 # POSIX-совместимый (работает с sh, bash, dash)
+#
+# Установка одной командой:
+#   curl -fsSL https://raw.githubusercontent.com/katana31337/FileShare2/refs/heads/main/install.sh | sudo sh
+#
+# Или вручную:
+#   curl -fsSL https://raw.githubusercontent.com/katana31337/FileShare2/refs/heads/main/install.sh -o install.sh
+#   sudo sh install.sh
 # =============================================================================
 
 set -e
+
+# =============================================================================
+# Если stdin занят pipe (curl | sh), перенаправляем ввод с терминала
+# Это позволяет интерактивно отвечать на вопросы при установке через curl
+# =============================================================================
+if [ ! -t 0 ]; then
+    if [ -r /dev/tty ]; then
+        exec 0</dev/tty
+    else
+        echo "Ошибка: нет доступа к терминалу для интерактивного ввода"
+        echo "Запустите скрипт напрямую: sudo sh install.sh"
+        exit 1
+    fi
+fi
 
 # Docker Hub
 DOCKER_USER="katana31337"
