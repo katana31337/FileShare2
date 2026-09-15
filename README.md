@@ -5,7 +5,7 @@
 ## 🚀 Быстрая установка
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/katana31337/FileShare2/refs/heads/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/katana31337/FileShare2/refs/heads/main/install.sh | sudo sh
 ```
 
 ## 📋 Требования
@@ -34,11 +34,13 @@ chmod +x install.sh
 .
 ├── frontend/           # React SPA
 ├── backend/            # Node.js API
+├── e2e/                # E2E тесты (Playwright)
 ├── docker/             # Nginx конфигурация
+├── .github/workflows/  # GitHub Actions
 ├── docker-compose.yml  # Локальная разработка
-├── docker-compose.production.yml  # Production из Docker Hub
 ├── Dockerfile.frontend # Сборка frontend
-└── install.sh          # Скрипт установки
+├── install.sh          # Скрипт установки
+└── TESTING.md          # Документация по тестированию
 ```
 
 ## 🏗️ Архитектура
@@ -69,6 +71,49 @@ chmod +x install.sh
 - HTTP security headers
 - CORS ограничение
 - Сессионные cookies с подписью
+- Хеширование паролей (SHA-256)
+
+## 🧪 Тестирование
+
+Полная система тестирования включает:
+
+### Unit Tests
+```bash
+npm test              # Frontend тесты
+cd backend && npm test  # Backend тесты
+```
+
+### E2E Tests
+```bash
+# Локально
+docker compose -f docker-compose.test.yml up -d
+npx playwright test
+
+# Или через GitHub Actions (автоматически)
+```
+
+### Coverage
+```bash
+npm run test:coverage # Frontend покрытие
+cd backend && npm run test:coverage  # Backend покрытие
+```
+
+Подробная документация:
+- [TESTING.md](TESTING.md) — полное руководство по тестированию
+- [DOCKER_TEST.md](DOCKER_TEST.md) — тестовое Docker окружение
+
+## 🚀 CI/CD
+
+GitHub Actions автоматически запускает:
+
+1. **CI Pipeline** — тесты, линтинг, сборка, Docker build, security scan
+2. **E2E Tests** — Playwright тесты с отчётами
+3. **Docker Build** — сборка и push образов в Docker Hub
+
+### Workflows:
+- `.github/workflows/ci.yml` — основной CI
+- `.github/workflows/e2e.yml` — E2E тесты
+- `.github/workflows/docker.yml` — Docker build и push
 
 ## 📦 Docker Hub образы
 
@@ -85,3 +130,9 @@ rm -rf /datastore
 ## 📄 Лицензия
 
 MIT
+
+## 🔗 Ссылки
+
+- [Документация по тестированию](TESTING.md)
+- [GitHub Actions](.github/workflows/)
+- [Docker Hub](https://hub.docker.com/u/katana31337)
