@@ -17,30 +17,27 @@
 set -e
 
 # =============================================================================
-# Если скрипт запущен через pipe (curl | sh), stdin занят данными из pipe.
-# В этом случае сохраняем скрипт в /tmp и перезапускаем его напрямую.
-# Это единственный надёжный способ получить интерактивный ввод при sudo.
+# Гарантируем, что PATH включает стандартные директории
+# Это нужно для работы при запуске через sudo, который может сбрасывать PATH
+# =============================================================================
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+
+# =============================================================================
+# Если stdin занят pipe (curl | sh), открываем /dev/tty для интерактивного ввода
+# Это позволяет работать при запуске через curl | sudo sh
 # =============================================================================
 if [ ! -t 0 ]; then
-    # Проверяем, не запущены ли мы уже из временного файла (защита от рекурсии)
-    case "$0" in
-        /tmp/fileshare-install-*)
-            # Уже перезапущены, но stdin всё равно не tty — значит нет терминала
-            echo "Ошибка: невозможно получить доступ к терминалу."
-            echo "Попробуйте запустить скрипт напрямую:"
-            echo "  curl -fsSL https://raw.githubusercontent.com/katana31337/FileShare2/refs/heads/main/install.sh -o /tmp/install.sh"
-            echo "  sudo sh /tmp/install.sh"
-            exit 1
-            ;;
-    esac
-
-    # Сохраняем stdin (данные скрипта из pipe) во временный файл
-    TMPSCRIPT="/tmp/fileshare-install-$$.sh"
-    cat > "$TMPSCRIPT"
-    chmod +x "$TMPSCRIPT"
-
-    # Перезапускаем скрипт напрямую — теперь stdin будет терминалом
-    exec sh "$TMPSCRIPT" "$@"
+    if [ -r /dev/tty ]; then
+        exec 3</dev/tty
+    else
+        echo "Ошибка: нет доступа к терминалу для интерактивного ввода"
+        echo "Запустите скрипт напрямую:"
+        echo "  curl -fsSL https://raw.githubusercontent.com/katana31337/FileShare2/refs/heads/main/install.sh -o install.sh"
+        echo "  sudo sh install.sh"
+        exit 1
+    fi
+else
+    exec 3</dev/stdin
 fi
 
 # Docker Hub
@@ -50,15 +47,6 @@ BACKEND_IMAGE="$DOCKER_USER/fileshare-backend"
 
 # Data storage
 DATASTORE_PATH="/datastore"
-
-# Cleanup function
-cleanup() {
-    # Удаляем временный файл если он существует
-    if [ -n "$TMPSCRIPT" ] && [ -f "$TMPSCRIPT" ]; then
-        rm -f "$TMPSCRIPT"
-    fi
-}
-trap cleanup EXIT
 
 # Colors (через printf для совместимости)
 RED=''
@@ -90,12 +78,18 @@ print_warning() { printf "${YELLOW}⚠ %s${NC}\n" "$1"; }
 print_error()   { printf "${RED}✗ %s${NC}\n" "$1"; }
 print_info()    { printf "${BLUE}ℹ %s${NC}\n" "$1"; }
 
+# Wrapper для read — читает из fd 3 (tty или stdin)
+ask() {
+    read "$@" <&3
+}
+
 # Check prerequisites
 check_requirements() {
     print_header "Проверка требований"
 
     if ! command -v docker >/dev/null 2>&1; then
         print_error "Docker не установлен!"
+        echo "Текущий PATH: $PATH"
         echo "Установите Docker: https://docs.docker.com/get-docker/"
         exit 1
     fi
@@ -129,7 +123,7 @@ collect_config() {
     # Version
     printf "${YELLOW}Введите версию FileShare для установки (или Enter для latest):${NC}\n"
     printf "> "
-    read -r VERSION_INPUT
+    ask -r VERSION_INPUT
     VERSION=${VERSION_INPUT:-latest}
     print_info "Версия: $VERSION"
 
@@ -138,7 +132,7 @@ collect_config() {
     printf "${YELLOW}Введите домен для сервиса:${NC}\n"
     echo "  (например: fileshare.local, files.example.com)"
     printf "> "
-    read -r DOMAIN
+    ask -r DOMAIN
     DOMAIN=${DOMAIN:-fileshare.local}
     print_info "Домен: $DOMAIN"
 
@@ -149,7 +143,7 @@ collect_config() {
     echo "  2) Let's Encrypt (для публичного домена)"
     echo ""
     printf "Выберите [1/2] (по умолчанию: 1): "
-    read -r SSL_CHOICE
+    ask -r SSL_CHOICE
     SSL_CHOICE=${SSL_CHOICE:-1}
 
     if [ "$SSL_CHOICE" = "2" ]; then
@@ -159,7 +153,7 @@ collect_config() {
         echo ""
         printf "${YELLOW}Введите email для Let's Encrypt:${NC}\n"
         printf "> "
-        read -r LETSENCRYPT_EMAIL
+        ask -r LETSENCRYPT_EMAIL
         if [ -z "$LETSENCRYPT_EMAIL" ]; then
             print_error "Email обязателен для Let's Encrypt!"
             exit 1
@@ -175,7 +169,7 @@ collect_config() {
     echo "  (Например: my-secret-admin-xyz123)"
     printf "  ${BLUE}Этот URL нужно будет ввести в браузере для входа в админку${NC}\n"
     printf "> "
-    read -r ADMIN_PATH
+    ask -r ADMIN_PATH
     ADMIN_PATH=${ADMIN_PATH:-$(generate_random_string 16)}
     ADMIN_SECRET_PATH="/${ADMIN_PATH}"
     print_info "Секретный URL: $ADMIN_SECRET_PATH"
@@ -184,7 +178,7 @@ collect_config() {
     echo ""
     printf "${YELLOW}Пароль для базы данных (или Enter для автогенерации):${NC}\n"
     printf "> "
-    read -r DB_PASSWORD_INPUT
+    ask -r DB_PASSWORD_INPUT
     if [ -z "$DB_PASSWORD_INPUT" ]; then
         DB_PASSWORD=$(generate_password 24)
         print_info "Сгенерирован пароль для БД"
