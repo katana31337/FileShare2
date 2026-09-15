@@ -18,9 +18,5 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: {
-    command: 'echo "Using existing Docker services"',
-    url: 'http://localhost/api/health',
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: false,
 });
