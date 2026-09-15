@@ -17,17 +17,30 @@
 set -e
 
 # =============================================================================
-# Если stdin занят pipe (curl | sh), перенаправляем ввод с терминала
-# Это позволяет интерактивно отвечать на вопросы при установке через curl
+# Если скрипт запущен через pipe (curl | sh), stdin занят данными из pipe.
+# В этом случае сохраняем скрипт в /tmp и перезапускаем его напрямую.
+# Это единственный надёжный способ получить интерактивный ввод при sudo.
 # =============================================================================
 if [ ! -t 0 ]; then
-    if [ -r /dev/tty ]; then
-        exec 0</dev/tty
-    else
-        echo "Ошибка: нет доступа к терминалу для интерактивного ввода"
-        echo "Запустите скрипт напрямую: sudo sh install.sh"
-        exit 1
-    fi
+    # Проверяем, не запущены ли мы уже из временного файла (защита от рекурсии)
+    case "$0" in
+        /tmp/fileshare-install-*)
+            # Уже перезапущены, но stdin всё равно не tty — значит нет терминала
+            echo "Ошибка: невозможно получить доступ к терминалу."
+            echo "Попробуйте запустить скрипт напрямую:"
+            echo "  curl -fsSL https://raw.githubusercontent.com/katana31337/FileShare2/refs/heads/main/install.sh -o /tmp/install.sh"
+            echo "  sudo sh /tmp/install.sh"
+            exit 1
+            ;;
+    esac
+
+    # Сохраняем stdin (данные скрипта из pipe) во временный файл
+    TMPSCRIPT="/tmp/fileshare-install-$$.sh"
+    cat > "$TMPSCRIPT"
+    chmod +x "$TMPSCRIPT"
+
+    # Перезапускаем скрипт напрямую — теперь stdin будет терминалом
+    exec sh "$TMPSCRIPT" "$@"
 fi
 
 # Docker Hub
@@ -37,6 +50,15 @@ BACKEND_IMAGE="$DOCKER_USER/fileshare-backend"
 
 # Data storage
 DATASTORE_PATH="/datastore"
+
+# Cleanup function
+cleanup() {
+    # Удаляем временный файл если он существует
+    if [ -n "$TMPSCRIPT" ] && [ -f "$TMPSCRIPT" ]; then
+        rm -f "$TMPSCRIPT"
+    fi
+}
+trap cleanup EXIT
 
 # Colors (через printf для совместимости)
 RED=''
