@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   # PostgreSQL Database
   db:
@@ -69,12 +71,6 @@ services:
       - backend
     networks:
       - fileshare-network
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
 
   # Nginx (reverse proxy + SSL)
   nginx:
@@ -102,11 +98,6 @@ services:
     volumes:
       - ./certs:/etc/letsencrypt
       - ./docker/nginx/certbot:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-    networks:
-      - fileshare-network
-    profiles:
-      - letsencrypt
 
 networks:
   fileshare-network:
